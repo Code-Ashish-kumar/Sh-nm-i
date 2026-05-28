@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 export const auth = (req, res, next) => {
   // Extract token directly from the cookie
-  const token = req.cookies.jwt;
+  const token = req.cookies?.jwt || req.header("Authorization")?.replace("Bearer ","");
 
   if (!token) {
     return res.status(401).json({ error: 'Not authorized, no token provided.' });
