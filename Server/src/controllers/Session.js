@@ -10,6 +10,9 @@ export const startSession = async (req, res) => {
       date,              // Expected format: 'YYYY-MM-DD'
       planned_duration   // Expected format: integer
     } = req.body;
+    
+    // Extract the user_id from the decoded JWT
+    const user_id = req.user.id;
 
     if (!subject_id || !session_type) {
       return res.status(400).json({ error: 'subject_id and session_type are required.' });
@@ -19,8 +22,8 @@ export const startSession = async (req, res) => {
       return res.status(400).json({ error: 'session_type must be either "focus" or "break".' });
     }
 
-    // Pass the new variables into the model function
-    const newSession = await insertSession(subject_id, session_type, date, planned_duration);
+    // Pass the new variables into the model function including user_id
+    const newSession = await insertSession(subject_id, session_type, date, planned_duration, user_id);
 
     res.status(201).json({
       message: 'Session started successfully',

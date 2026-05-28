@@ -31,7 +31,7 @@ export const register = async (req, res) => {
     // 3. Create the user
     const newUser = await registerUser(name, email, password);
 
-    const token = generateToken(user.user_id);
+    const token = generateToken(newUser.user_id);
 
     // Attach the token to an httpOnly cookie
     res.cookie('jwt', token, {
@@ -42,8 +42,8 @@ export const register = async (req, res) => {
     });
 
     res.status(200).json({
-    message: 'Login successful',
-    user_id: user.user_id
+    message: 'Registration successful',
+    user_id: newUser.user_id
     // Notice we no longer need to send the token in the JSON body!
     });
 
@@ -59,9 +59,9 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { name, password } = req.body;
+    const { email, password } = req.body;
 
-    const user = await verifyUser(name, password);
+    const user = await verifyUser(email, password);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials.' });

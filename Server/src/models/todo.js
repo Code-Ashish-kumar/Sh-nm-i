@@ -12,6 +12,7 @@ export const createTodoTable = async () => {
       todo_date DATE DEFAULT CURRENT_DATE,      -- NEW: Stores the date for the task
       user_id UUID NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      completed_at TIMESTAMP DEFAULT NULL,
       
       CONSTRAINT fk_user_todo
         FOREIGN KEY(user_id) 
@@ -58,4 +59,14 @@ export const getTodosByUserId = async (userId) => {
   `;
   const { rows } = await query(sql, [userId]);
   return rows;
+};
+
+export const updateTodo = async (todoId, fields) => {
+  const { status, completed_at } = fields;
+  const sql = `
+    UPDATE todos SET status = $1, completed_at = $2
+    WHERE todo_id = $3 RETURNING *;
+  `;
+  const { rows } = await query(sql, [status, completed_at, todoId]);
+  return rows[0];
 };

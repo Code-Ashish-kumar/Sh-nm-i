@@ -1,5 +1,5 @@
 
-import { insertTodo, getTodosByUserId } from '../models/Todo.js';
+import { insertTodo, getTodosByUserId, updateTodo } from '../models/Todo.js';
 
 export const createTodo = async (req, res) => {
   try {
@@ -42,6 +42,21 @@ export const getUserTodos = async (req, res) => {
     res.status(200).json({ todos });
   } catch (error) {
     console.error('Error fetching todos:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const completeTodo = async (req, res) => {
+  try {
+    const { todo_id } = req.params;
+    const updated = await updateTodo(todo_id, {
+      status: true,
+      completed_at: new Date(),
+    });
+    if (!updated) return res.status(404).json({ error: 'Todo not found.' });
+    res.status(200).json({ todo: updated });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

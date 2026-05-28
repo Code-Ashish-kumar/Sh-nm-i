@@ -6,35 +6,35 @@ export const createSessionTable = async () => {
     CREATE TABLE IF NOT EXISTS sessions (
       session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       subject_id UUID NOT NULL,
-      session_date DATE DEFAULT CURRENT_DATE,          -- NEW: Stores the planned or actual date
-      planned_duration INTEGER DEFAULT 0,              -- NEW: Target duration (e.g., in seconds)
+      user_id UUID NOT NULL,                           -- NEW: Add user_id
+      session_date DATE DEFAULT CURRENT_DATE,          
+      planned_duration INTEGER DEFAULT 0,              
       start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       end_time TIMESTAMP,
       actual_duration INTEGER DEFAULT 0,
       session_type VARCHAR(20) NOT NULL CHECK (session_type IN ('focus', 'break')),
       is_completed BOOLEAN DEFAULT FALSE,
       
-      CONSTRAINT fk_subject_session
-        FOREIGN KEY(subject_id) 
-        REFERENCES subjects(subject_id)
-        ON DELETE CASCADE
+      CONSTRAINT fk_subject_session FOREIGN KEY(subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE,
+      CONSTRAINT fk_user_session FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE -- NEW: Foreign key constraint
     );
   `;
   await query(sql);
   console.log('Sessions table ready.');
 };
 
-// Updated: Now accepts sessionDate and plannedDuration
-export const insertSession = async (subjectId, sessionType, sessionDate, plannedDuration) => {
+// Updated: Now accepts sessionDate, plannedDuration, and userId
+export const insertSession = async (subjectId, sessionType, sessionDate, plannedDuration, userId) => {
   const sql = `
     INSERT INTO sessions (
       subject_id, 
       session_type, 
       session_date, 
-      planned_duration
+      planned_duration,
+      user_id
     ) 
     -- COALESCE handles undefined/null values by falling back to DB defaults
-    VALUES ($1, $2, COALESCE($3, CURRENT_DATE), COALESCE($4, 0)) 
+    VALUES ($1, $2, COALESCE($3, CURRENT_DATE), COALESCE($4, 0), $5) 
     RETURNING *;
   `;
   
@@ -43,7 +43,8 @@ export const insertSession = async (subjectId, sessionType, sessionDate, planned
     subjectId, 
     sessionType, 
     sessionDate || null, 
-    plannedDuration || 0
+    plannedDuration || 0,
+    userId
   ]);
   
   return rows[0];
