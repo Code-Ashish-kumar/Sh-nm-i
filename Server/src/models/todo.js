@@ -70,3 +70,16 @@ export const updateTodo = async (todoId, fields) => {
   const { rows } = await query(sql, [status, completed_at, todoId]);
   return rows[0];
 };
+
+export const getUserTodosByDate = async (userId, targetDate) => {
+  const sql = `
+    SELECT * FROM todos 
+    WHERE user_id = $1 
+      AND todo_date >= $2::DATE - 6
+      AND todo_date <= $2::DATE
+    ORDER BY todo_date ASC, created_at DESC;
+  `;
+  
+  const { rows } = await query(sql, [userId, targetDate]);
+  return rows;
+};
