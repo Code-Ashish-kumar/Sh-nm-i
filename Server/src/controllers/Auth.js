@@ -31,20 +31,10 @@ export const register = async (req, res) => {
     // 3. Create the user
     const newUser = await registerUser(name, email, password);
 
-    const token = generateToken(newUser.user_id);
-
-    // Attach the token to an httpOnly cookie
-    res.cookie('jwt', token, {
-    httpOnly: true, // Prevents JavaScript (XSS) from reading the cookie
-    secure: process.env.NODE_ENV === 'production', // Use true if using HTTPS
-    sameSite: 'strict', // Prevents CSRF attacks
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
-    });
-
     res.status(200).json({
-    message: 'Registration successful',
-    user_id: newUser.user_id
-    // Notice we no longer need to send the token in the JSON body!
+      message: 'Registration successful',
+      user_id: newUser.user_id
+      // Notice we no longer need to send the token in the JSON body!
     });
 
   } catch (error) {
