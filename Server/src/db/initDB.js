@@ -1,4 +1,3 @@
-
 import { createSessionTable } from '../models/session.js'
 import { createSubjectTable } from '../models/subject.js'
 import { createTodoTable } from '../models/todo.js'

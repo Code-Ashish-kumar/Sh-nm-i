@@ -1,5 +1,5 @@
 
-import { insertTodo, getTodosByUserId, updateTodo } from '../models/Todo.js';
+import { insertTodo, getTodosByUserId, updateTodo, getUserTodosByDate } from '../models/Todo.js';
 
 export const createTodo = async (req, res) => {
   try {
@@ -8,7 +8,6 @@ export const createTodo = async (req, res) => {
       status = false, 
       notification_enabled = false, 
       date,              // Expected format: 'YYYY-MM-DD'
- 
     } = req.body;
 
     const user_id = req.user.id;
@@ -36,11 +35,29 @@ export const createTodo = async (req, res) => {
   }
 };
 
-// (getUserTodos remains exactly the same)
-export const getUserTodos = async (req, res) => {
+// (getUserAllTodos remains exactly the same)
+export const getUserAllTodos = async (req, res) => {
   try {
     const user_id = req.user.id;
     const todos = await getTodosByUserId(user_id);
+    res.status(200).json({ todos });
+  } catch (error) {
+    console.error('Error fetching todos:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// (getUserTodosByDate remains exactly the same)
+export const getUserTodosByDate = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    const { date } = req.body; // Expected format: 'YYYY-MM-DD'
+
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required.' });
+    }
+
+    const todos = await getUserTodosByDate(user_id, date);
     res.status(200).json({ todos });
   } catch (error) {
     console.error('Error fetching todos:', error);

@@ -20,6 +20,8 @@ const app = express()
 await connectDB()
 await initDB()
 
+await initDB();
+
 //middlewares
 app.use(
   cors({
