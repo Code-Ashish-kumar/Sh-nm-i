@@ -12,6 +12,7 @@ import TimerConfig from "../components/timer/TimerConfig";
 import SessionActive from "../components/timer/SessionActive";
 import MusicPanel from "../components/spotify/MusicPanel";
 import MiniPlayer from "../components/spotify/MiniPlayer";
+import TodoPanel from "../components/todo/TodoPanel";
 
 const ChevronLeft = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -219,15 +220,8 @@ export default function Dashboard() {
                                 </button>
                             </div>
 
-                            <div className="flex-1 p-5 flex flex-col items-center justify-center">
-                                <div className="text-center">
-                                    <p className="text-xs text-[#2D1B4E] uppercase tracking-widest mb-3 font-medium">
-                                        Todo
-                                    </p>
-                                    <div className="w-48 h-32 rounded-xl bg-black/5 border border-dashed border-[#2D1B4E]/20 flex items-center justify-center">
-                                        <p className="text-xs text-[#4A3B69]">Coming soon</p>
-                                    </div>
-                                </div>
+                            <div className="flex-1 p-5 overflow-y-auto">
+                                <TodoPanel />
                             </div>
 
                             <button

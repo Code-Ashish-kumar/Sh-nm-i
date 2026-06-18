@@ -6,9 +6,10 @@ import {
     breakEnded,
     paused,
     resumed,
+    phaseStarted,
     sessionStopped,
 } from "../../slices/timerSlice";
-import { endSession } from "../../services/Operations/sessionAPI";
+import { startSession, endSession } from "../../services/Operations/sessionAPI";
 import TimerRing from "./TimerRing";
 import TimerControls from "./TimerControls";
 
@@ -36,7 +37,7 @@ function showNotification(title, body, onDismiss) {
     }
 }
 
-// ── Alarm (continuous looping soft bells via Web Audio) ────────────────────
+// ── Alarm ─────────────────────────────────────────────────────────────────
 
 class AlarmPlayer {
     constructor() {
@@ -44,17 +45,15 @@ class AlarmPlayer {
         this.playing = false;
         this.timeoutIds = [];
     }
-
     start() {
         if (this.playing) return;
         this.playing = true;
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this._scheduleLoop();
     }
-
     _scheduleLoop() {
         if (!this.playing) return;
-        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+        const notes = [523.25, 659.25, 783.99];
         notes.forEach((freq, i) => {
             const id = setTimeout(() => {
                 if (!this.playing) return;
@@ -67,7 +66,6 @@ class AlarmPlayer {
         }, 1800);
         this.timeoutIds.push(loopId);
     }
-
     _playTone(freq, duration) {
         if (!this.ctx || !this.playing) return;
         const osc = this.ctx.createOscillator();
@@ -81,7 +79,6 @@ class AlarmPlayer {
         osc.start(this.ctx.currentTime);
         osc.stop(this.ctx.currentTime + duration);
     }
-
     stop() {
         this.playing = false;
         this.timeoutIds.forEach(clearTimeout);
@@ -93,7 +90,6 @@ class AlarmPlayer {
     }
 }
 
-// Singleton alarm instance outside component to avoid ref-in-render issues
 const alarm = new AlarmPlayer();
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -106,16 +102,28 @@ export default function SessionActive() {
         focusDuration,
         breakDuration,
         sessionId,
+        subjectId,
         subjectName,
-        elapsedFocusSeconds,
+        elapsedPhaseSeconds,
+        totalFocusSeconds,
     } = useSelector((state) => state.timer);
 
     const workerRef = useRef(null);
     const [stopping, setStopping] = useState(false);
     const [confirmStop, setConfirmStop] = useState(false);
     const [alarmActive, setAlarmActive] = useState(false);
-    // Track previous remaining to detect the 1→0 transition
     const [prevRemaining, setPrevRemaining] = useState(remainingSeconds);
+
+    // Keep refs to current values so async/effect callbacks never read stale state
+    const sessionIdRef = useRef(sessionId);
+    const elapsedRef = useRef(elapsedPhaseSeconds);
+    const modeRef = useRef(mode);
+    const subjectIdRef = useRef(subjectId);
+
+    useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+    useEffect(() => { elapsedRef.current = elapsedPhaseSeconds; }, [elapsedPhaseSeconds]);
+    useEffect(() => { modeRef.current = mode; }, [mode]);
+    useEffect(() => { subjectIdRef.current = subjectId; }, [subjectId]);
 
     const total = (mode === "break" || mode === "paused_break") ? breakDuration : focusDuration;
 
@@ -124,13 +132,36 @@ export default function SessionActive() {
         setAlarmActive(false);
     };
 
-    // Request notification permission on mount
+    // ── Complete the current phase on the backend ─────────────────────────
+    const completeCurrentPhase = async (sid, elapsed) => {
+        if (!sid || elapsed === 0) return;
+        try {
+            await endSession({ sessionId: sid, actualDuration: elapsed });
+        } catch (err) {
+            console.error("Failed to complete phase session:", err);
+        }
+    };
+
+    // ── Start a new phase session on the backend ──────────────────────────
+    const startNewPhase = async (sessionType, plannedDuration) => {
+        try {
+            const response = await startSession({
+                subjectId: subjectIdRef.current,
+                sessionType,
+                plannedDuration,
+            });
+            dispatch(phaseStarted({ sessionId: response.session.session_id }));
+        } catch (err) {
+            console.error("Failed to start new phase:", err);
+        }
+    };
+
     useEffect(() => {
         requestNotificationPermission();
         return () => alarm.stop();
     }, []);
 
-    // ── Web Worker lifecycle ──────────────────────────────────────────────
+    // ── Web Worker ────────────────────────────────────────────────────────
     useEffect(() => {
         workerRef.current = new Worker("/timer-worker.js");
         workerRef.current.onmessage = () => {
@@ -141,7 +172,6 @@ export default function SessionActive() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // ── Start/stop worker based on mode ───────────────────────────────────
     useEffect(() => {
         const running = mode === "focus" || mode === "break";
         if (running && workerRef.current) {
@@ -151,14 +181,22 @@ export default function SessionActive() {
         }
     }, [mode]);
 
-    // ── Detect timer completion (1→0 edge) ────────────────────────────────
-    // This effect reacts to the Web Worker's external tick events — intentional setState.
+    // ── Detect timer completion → complete phase, trigger alarm ────────────
     useEffect(() => {
         if (remainingSeconds === 0 && prevRemaining > 0 && (mode === "focus" || mode === "break")) {
+            // Capture values NOW before dispatch changes them
+            const currentSessionId = sessionIdRef.current;
+            const currentElapsed = elapsedRef.current;
+            const currentMode = modeRef.current;
+
+            // Complete the current phase on the backend with exact elapsed time
+            completeCurrentPhase(currentSessionId, currentElapsed);
+
+            // Trigger alarm
             alarm.start();
             setAlarmActive(true); // eslint-disable-line react-hooks/set-state-in-effect
 
-            const isBreakNext = mode === "focus";
+            const isBreakNext = currentMode === "focus";
             const title = isBreakNext ? "Focus Session Complete" : "Break Over";
             const body = isBreakNext
                 ? `Time for a ${Math.floor(breakDuration / 60)}-minute break.`
@@ -166,6 +204,7 @@ export default function SessionActive() {
 
             showNotification(title, body, dismissAlarm);
 
+            // Transition to next phase (paused, awaiting user)
             if (isBreakNext) {
                 dispatch(focusEnded());
             } else {
@@ -181,9 +220,17 @@ export default function SessionActive() {
         if (alarmActive) {
             dismissAlarm();
         }
+
         if (mode === "focus" || mode === "break") {
             dispatch(paused());
-        } else {
+        } else if (mode === "paused_focus" || mode === "paused_break") {
+            // If sessionId is null, we need to create a new backend session for this phase
+            // (sessionId is nulled by focusEnded/breakEnded when a phase completes)
+            if (!sessionId) {
+                const sessionType = mode === "paused_focus" ? "focus" : "break";
+                const plannedDuration = mode === "paused_focus" ? focusDuration : breakDuration;
+                startNewPhase(sessionType, plannedDuration);
+            }
             dispatch(resumed());
         }
     };
@@ -196,10 +243,15 @@ export default function SessionActive() {
     const handleConfirmStop = async () => {
         setStopping(true);
         try {
-            await endSession({
-                sessionId,
-                actualDuration: elapsedFocusSeconds,
-            });
+            // Complete the current phase with exact elapsed time
+            const currentSessionId = sessionIdRef.current;
+            const currentElapsed = elapsedRef.current;
+            if (currentSessionId && currentElapsed > 0) {
+                await endSession({
+                    sessionId: currentSessionId,
+                    actualDuration: currentElapsed,
+                });
+            }
         } catch (err) {
             console.error("Failed to record session:", err);
         } finally {
@@ -211,11 +263,11 @@ export default function SessionActive() {
 
     const handleCancelStop = () => setConfirmStop(false);
 
-    const elapsedMin = Math.floor(elapsedFocusSeconds / 60);
-    const elapsedSec = elapsedFocusSeconds % 60;
-    const elapsedLabel = elapsedMin > 0
-        ? `${elapsedMin}m ${elapsedSec}s`
-        : `${elapsedSec}s`;
+    const totalFocusMin = Math.floor(totalFocusSeconds / 60);
+    const totalFocusSec = totalFocusSeconds % 60;
+    const phaseLabel = elapsedPhaseSeconds > 0
+        ? `${Math.floor(elapsedPhaseSeconds / 60)}m ${elapsedPhaseSeconds % 60}s`
+        : "0s";
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center relative cursor-default">
@@ -238,9 +290,9 @@ export default function SessionActive() {
                 onStop={handleStop}
             />
 
-            {/* Elapsed focus time */}
+            {/* Elapsed focus time (total across all focus phases) */}
             <p className="text-xs text-[#9CA3AF] mt-6 tracking-wide">
-                {elapsedMin}:{elapsedSec.toString().padStart(2, "0")} focused
+                {totalFocusMin}:{totalFocusSec.toString().padStart(2, "0")} focused
             </p>
 
             {/* Alarm dismiss overlay */}
@@ -261,9 +313,9 @@ export default function SessionActive() {
                     <div className="bg-[#141417] border border-white/10 rounded-2xl p-7 w-80 shadow-2xl">
                         <h3 className="text-white font-semibold text-base mb-2">End Session?</h3>
                         <p className="text-[#9CA3AF] text-sm mb-6">
-                            {elapsedFocusSeconds > 0
-                                ? `This will log ${elapsedLabel} of focus time.`
-                                : "No focus time recorded yet."}
+                            {elapsedPhaseSeconds > 0
+                                ? `This will log ${phaseLabel} for this phase.`
+                                : "No time recorded for this phase."}
                         </p>
                         <div className="flex gap-3">
                             <button
