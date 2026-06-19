@@ -1,6 +1,9 @@
 import { apiConnector } from "../apiConnector";
 import { endpoints } from "../api";
 
+import { setToken } from "../../slices/authSlice";
+
+
 const { SIGNUP_API, LOGIN_API } = endpoints;
 
 // Tells the browser to send/receive cookies on cross-origin requests
@@ -34,13 +37,17 @@ export async function signup(formData) {
 //  @param {string} email
 //  @param {string} password
 //  @param {function} navigate
+//  @param {function} dispatch
 // ─────────────────────────────────────────────
-export async function login(email, password, navigate) {
+export async function login(email, password, navigate , dispatch) {
     try {
         const data = await apiConnector("POST", LOGIN_API, { email, password }, CRED_HEADERS);
 
         console.log("LOGIN API RESPONSE:", data);
         // data = { message: "Login successful", user_id: "..." }
+
+        dispatch(setToken({ token: data.token })); // Store the token in Redux state
+        localStorage.setItem("token", JSON.stringify(data.token));
 
         navigate("/dashboard");
         return data; // user_id available here when you're ready to store it

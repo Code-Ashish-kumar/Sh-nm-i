@@ -1,6 +1,6 @@
 import express from 'express';
 // Make sure this matches the exact name of your analytics controller file
-import { getDashboardAnalytics } from '../controllers/Analytics.js'; 
+import { getDashboardAnalytics, getDailyTimeline } from '../controllers/Analytics.js'; 
 import { auth } from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -10,5 +10,7 @@ router.use(auth);
 
 // GET /api/analytics/dashboard
 router.get('/dashboard', getDashboardAnalytics);
+
+router.get('/timeline', getDailyTimeline);
 
 export { router as analyticsRouter };

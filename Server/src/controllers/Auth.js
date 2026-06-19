@@ -70,7 +70,8 @@ export const login = async (req, res) => {
 
     res.status(200).json({
     message: 'Login successful',
-    user_id: user.user_id
+    user_id: user.user_id,
+    token : token // Optional: you can also send the token in the response body if needed
     // Notice we no longer need to send the token in the JSON body!
     });
 

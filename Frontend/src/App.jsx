@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Analytics from "./pages/Analytics";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
@@ -24,6 +25,16 @@ function App() {
                         </ProtectedRoute>
                     } 
                 />
+
+                <Route
+                    path="/analytics"
+                    element={
+                        <ProtectedRoute>
+                            <Analytics />
+                        </ProtectedRoute>
+                    }
+                />
+                
             </Routes>
         </div>
     );

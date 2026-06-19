@@ -20,20 +20,46 @@ export const getDashboardAnalytics = async (req, res) => {
         `;
 
         // 2. Query for Bar Graph: Last 7 days session times grouped by date and type (focus vs break)
+        // const barGraphQuery = `
+        //     SELECT 
+        //         TO_CHAR(session_date, 'YYYY-MM-DD') as date, 
+        //         session_type, 
+        //         SUM(EXTRACT(EPOCH FROM (end_time - start_time)))::INT as daily_duration
+        //     FROM sessions
+        //     WHERE user_id = $1 
+        //         AND is_completed = TRUE
+        //         AND session_date >= CURRENT_DATE - INTERVAL '6 days'
+        //     GROUP BY session_date, session_type
+        //     ORDER BY session_date ASC;
+        // `;
+
+        // This query ensures that for every date, you get a clean object like: { date: "2026-06-10", focus_duration: 7200, break_duration: 1200 }
         const barGraphQuery = `
             SELECT 
                 TO_CHAR(session_date, 'YYYY-MM-DD') as date, 
-                session_type, 
-                SUM(EXTRACT(EPOCH FROM (end_time - start_time)))::INT as daily_duration
+                COALESCE(SUM(CASE WHEN session_type = 'focus' THEN EXTRACT(EPOCH FROM (end_time - start_time)) ELSE 0 END), 0)::INT as focus_duration,
+                COALESCE(SUM(CASE WHEN session_type = 'break' THEN EXTRACT(EPOCH FROM (end_time - start_time)) ELSE 0 END), 0)::INT as break_duration
             FROM sessions
             WHERE user_id = $1 
                 AND is_completed = TRUE
                 AND session_date >= CURRENT_DATE - INTERVAL '6 days'
-            GROUP BY session_date, session_type
+            GROUP BY session_date
             ORDER BY session_date ASC;
         `;
 
         // 3. Query for Heatmap: Completion proportion of todos over the last 7 days
+        // const heatmapQuery = `
+        //     SELECT 
+        //         TO_CHAR(todo_date, 'YYYY-MM-DD') as date,
+        //         COUNT(*)::INT as total_tasks,
+        //         SUM(CASE WHEN status = TRUE THEN 1 ELSE 0 END)::INT as completed_tasks
+        //     FROM todos
+        //     WHERE user_id = $1 
+        //         AND todo_date >= CURRENT_DATE - INTERVAL '6 days'
+        //     GROUP BY todo_date
+        //     ORDER BY todo_date ASC;
+        // `;
+
         const heatmapQuery = `
             SELECT 
                 TO_CHAR(todo_date, 'YYYY-MM-DD') as date,
@@ -41,7 +67,7 @@ export const getDashboardAnalytics = async (req, res) => {
                 SUM(CASE WHEN status = TRUE THEN 1 ELSE 0 END)::INT as completed_tasks
             FROM todos
             WHERE user_id = $1 
-                AND todo_date >= CURRENT_DATE - INTERVAL '6 days'
+                AND todo_date >= CURRENT_DATE - INTERVAL '30 days'
             GROUP BY todo_date
             ORDER BY todo_date ASC;
         `;
@@ -100,10 +126,36 @@ export const getDashboardAnalytics = async (req, res) => {
             pieChart: pieChartResult.rows,
             barGraph: barGraphResult.rows,
             heatmap: heatmapResult.rows,
-            tileStats
+            tileStats,
         });
     }catch (error) {
             console.error('Error compiling dashboard analytics:', error);
             res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+export const getDailyTimeline = async (req, res) => {
+    try{
+        const userId = req.user.id;
+        const { date } = req.query; // Expecting a date in 'YYYY-MM-DD' format
+
+        const dailyTimelineQuery = `
+            SELECT 
+                EXTRACT(HOUR FROM start_time)::INT as hour,
+                COALESCE(SUM(CASE WHEN session_type = 'focus' THEN EXTRACT(EPOCH FROM (end_time - start_time)) ELSE 0 END), 0)::INT as focus_duration,
+                COALESCE(SUM(CASE WHEN session_type = 'break' THEN EXTRACT(EPOCH FROM (end_time - start_time)) ELSE 0 END), 0)::INT as break_duration
+            FROM sessions
+            WHERE user_id = $1 
+                AND is_completed = TRUE
+                AND session_date = $2::DATE -- Pass the specific date you want to view here
+            GROUP BY EXTRACT(HOUR FROM start_time)
+            ORDER BY hour ASC;
+        `;
+
+        const { rows } = await query(dailyTimelineQuery, [userId, date]);
+        res.status(200).json({ dailyTimeline: rows });
+    } catch (error) {
+        console.error('Error fetching daily timeline:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}

@@ -29,5 +29,6 @@ export const sessionEndpoints = {
 
 // ANALYTICS ENDPOINTS
 export const analyticsEndpoints = {
-    USER_ANALYTICS_API: BASE_URL + "/analytics/dashboard"
+    USER_ANALYTICS_API: BASE_URL + "/analytics/dashboard",
+    USER_TIMELINE_API:  BASE_URL + "/analytics/timeline"
 }
