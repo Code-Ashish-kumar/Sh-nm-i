@@ -1,5 +1,6 @@
 
 import { insertTodo, getTodosByUserId, updateTodo, getUserTodosByDate } from '../models/Todo.js';
+import { updateUserStreak } from '../models/user.js';
 
 export const createTodo = async (req, res) => {
   try {
@@ -73,6 +74,9 @@ export const completeTodo = async (req, res) => {
       completed_at: new Date(),
     });
     if (!updated) return res.status(404).json({ error: 'Todo not found.' });
+
+    await updateUserStreak(req.user.id);
+    
     res.status(200).json({ todo: updated });
   } catch (error) {
     console.error(error);

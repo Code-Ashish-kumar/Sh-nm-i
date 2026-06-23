@@ -140,22 +140,97 @@ export const getDailyTimeline = async (req, res) => {
         const { date } = req.query; // Expecting a date in 'YYYY-MM-DD' format
 
         const dailyTimelineQuery = `
-            SELECT 
-                EXTRACT(HOUR FROM start_time)::INT as hour,
-                COALESCE(SUM(CASE WHEN session_type = 'focus' THEN EXTRACT(EPOCH FROM (end_time - start_time)) ELSE 0 END), 0)::INT as focus_duration,
-                COALESCE(SUM(CASE WHEN session_type = 'break' THEN EXTRACT(EPOCH FROM (end_time - start_time)) ELSE 0 END), 0)::INT as break_duration
-            FROM sessions
-            WHERE user_id = $1 
-                AND is_completed = TRUE
-                AND session_date = $2::DATE -- Pass the specific date you want to view here
-            GROUP BY EXTRACT(HOUR FROM start_time)
-            ORDER BY hour ASC;
+            WITH hourly_slots AS (
+                SELECT
+                    generate_series(
+                        $2::date,
+                        $2::date + interval '23 hours',
+                        interval '1 hour'
+                    ) AS slot_start
+            )
+            SELECT
+                EXTRACT(HOUR FROM hs.slot_start)::INT AS hour,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN s.session_type = 'focus' THEN
+                                EXTRACT(
+                                    EPOCH FROM (
+                                        LEAST(
+                                            s.end_time,
+                                            hs.slot_start + interval '1 hour'
+                                        )
+                                        -
+                                        GREATEST(
+                                            s.start_time,
+                                            hs.slot_start
+                                        )
+                                    )
+                                )
+                            ELSE 0
+                        END
+                    ),
+                    0
+                )::INT AS focus_duration,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN s.session_type = 'break' THEN
+                                EXTRACT(
+                                    EPOCH FROM (
+                                        LEAST(
+                                            s.end_time,
+                                            hs.slot_start + interval '1 hour'
+                                        )
+                                        -
+                                        GREATEST(
+                                            s.start_time,
+                                            hs.slot_start
+                                        )
+                                    )
+                                )
+                            ELSE 0
+                        END
+                    ),
+                    0
+                )::INT AS break_duration
+
+            FROM hourly_slots hs
+            LEFT JOIN sessions s
+                ON s.user_id = $1
+                AND s.is_completed = TRUE
+                AND s.start_time < ($2::date + interval '1 day')
+                AND s.end_time > $2::date
+                AND s.start_time < hs.slot_start + interval '1 hour'
+                AND s.end_time > hs.slot_start
+            GROUP BY hs.slot_start
+            ORDER BY hs.slot_start;
         `;
 
         const { rows } = await query(dailyTimelineQuery, [userId, date]);
         res.status(200).json({ dailyTimeline: rows });
     } catch (error) {
         console.error('Error fetching daily timeline:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+export const getCurrentStreak = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const streakQuery = `
+            SELECT current_streak, last_streak_date
+            FROM users
+            WHERE user_id = $1;
+        `;
+        const { rows } = await query(streakQuery, [userId]);
+        // console.log('Current streak query result:', rows); // Debugging line to check the query result
+        res.status(200).json({ currentStreak: rows[0].current_streak, lastStreakDate: rows[0].last_streak_date });
+    } catch (error) {
+        console.error('Error fetching current streak:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }

@@ -12,12 +12,15 @@ const initialState = {
     remainingSeconds: 25 * 60,
 
     // Active session tracking
-    sessionId: null,
+    sessionId: null,        // current phase's backend session_id
     subjectId: null,
     subjectName: null,
 
-    // Accumulated focus time sent to backend on stop
-    elapsedFocusSeconds: 0,
+    // Elapsed seconds for the CURRENT phase only (resets each phase)
+    elapsedPhaseSeconds: 0,
+
+    // Total accumulated focus time across all phases (for display)
+    totalFocusSeconds: 0,
 
     // Internal: timestamp when current interval started (ms), null if paused/idle
     intervalStartedAt: null,
@@ -36,15 +39,26 @@ const timerSlice = createSlice({
             state.focusDuration = focusDuration;
             state.breakDuration = breakDuration;
             state.remainingSeconds = focusDuration;
-            state.elapsedFocusSeconds = 0;
+            state.elapsedPhaseSeconds = 0;
+            state.totalFocusSeconds = 0;
             state.mode = "focus";
             state.intervalStartedAt = Date.now();
         },
 
-        // Tick every second — called by the interval in SessionActive
+        // Called when a new phase starts (break after focus, or focus after break)
+        phaseStarted(state, action) {
+            const { sessionId } = action.payload;
+            state.sessionId = sessionId;
+            state.elapsedPhaseSeconds = 0;
+            state.intervalStartedAt = Date.now();
+        },
+
+        // Tick every second
         tick(state) {
+            state.elapsedPhaseSeconds += 1;
+
             if (state.mode === "focus") {
-                state.elapsedFocusSeconds += 1;
+                state.totalFocusSeconds += 1;
             }
 
             if (state.remainingSeconds > 0) {
@@ -52,18 +66,22 @@ const timerSlice = createSlice({
             }
         },
 
-        // Focus interval ended naturally → switch to break
+        // Focus interval ended naturally → set up break but PAUSED (awaiting user input)
         focusEnded(state) {
-            state.mode = "break";
+            state.mode = "paused_break";
             state.remainingSeconds = state.breakDuration;
-            state.intervalStartedAt = Date.now();
+            state.intervalStartedAt = null;
+            state.elapsedPhaseSeconds = 0; // Reset for next phase
+            state.sessionId = null; // Clear — new session will be created on resume
         },
 
-        // Break interval ended naturally → switch back to focus
+        // Break interval ended naturally → set up focus but PAUSED (awaiting user input)
         breakEnded(state) {
-            state.mode = "focus";
+            state.mode = "paused_focus";
             state.remainingSeconds = state.focusDuration;
-            state.intervalStartedAt = Date.now();
+            state.intervalStartedAt = null;
+            state.elapsedPhaseSeconds = 0; // Reset for next phase
+            state.sessionId = null; // Clear — new session will be created on resume
         },
 
         // Play/Pause toggle
@@ -87,8 +105,8 @@ const timerSlice = createSlice({
             }
         },
 
-        // Stop — resets everything; elapsedFocusSeconds is read BEFORE this dispatch
-        sessionStopped(state) {
+        // Stop — resets everything
+        sessionStopped() {
             return { ...initialState };
         },
 
@@ -104,6 +122,7 @@ const timerSlice = createSlice({
 
 export const {
     sessionStarted,
+    phaseStarted,
     tick,
     focusEnded,
     breakEnded,

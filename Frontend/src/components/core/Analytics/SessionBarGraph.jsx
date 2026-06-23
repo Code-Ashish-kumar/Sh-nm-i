@@ -11,10 +11,12 @@ import {
   Cell,
 } from "recharts";
 
+const monoFont = "'JetBrains Mono', monospace";
+
 const SessionBarGraph = ({ data, onDayClick }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[420px] text-slate-500">
+      <div className="flex items-center justify-center h-[420px] text-[#7A7164] text-sm">
         No activity data available
       </div>
     );
@@ -64,8 +66,8 @@ const SessionBarGraph = ({ data, onDayClick }) => {
               x2="0"
               y2="1"
             >
-              <stop offset="0%" stopColor="#818CF8" />
-              <stop offset="100%" stopColor="#6366F1" />
+              <stop offset="0%" stopColor="#F07A5F" />
+              <stop offset="100%" stopColor="#E8553D" />
             </linearGradient>
 
             <linearGradient
@@ -75,13 +77,13 @@ const SessionBarGraph = ({ data, onDayClick }) => {
               x2="0"
               y2="1"
             >
-              <stop offset="0%" stopColor="#34D399" />
-              <stop offset="100%" stopColor="#10B981" />
+              <stop offset="0%" stopColor="#A9C599" />
+              <stop offset="100%" stopColor="#8FAE7D" />
             </linearGradient>
           </defs>
 
           <CartesianGrid
-            stroke="#1E293B"
+            stroke="#2A241E"
             strokeDasharray="4 4"
             vertical={false}
           />
@@ -92,8 +94,9 @@ const SessionBarGraph = ({ data, onDayClick }) => {
             axisLine={false}
             tickLine={false}
             tick={{
-              fill: "#94A3B8",
+              fill: "#A89F94",
               fontSize: 12,
+              fontFamily: monoFont,
             }}
             dy={10}
           />
@@ -103,26 +106,33 @@ const SessionBarGraph = ({ data, onDayClick }) => {
             axisLine={false}
             tickLine={false}
             tick={{
-              fill: "#94A3B8",
+              fill: "#A89F94",
               fontSize: 12,
+              fontFamily: monoFont,
             }}
             width={45}
           />
 
           <Tooltip
             cursor={{
-              fill: "rgba(99,102,241,0.08)",
+              fill: "rgba(232,85,61,0.08)",
             }}
             contentStyle={{
-              background: "#0F172A",
-              border: "1px solid #334155",
+              background: "#1F1A16",
+              border: "1px solid #2A241E",
               borderRadius: "16px",
-              color: "#fff",
-              boxShadow:
-                "0 10px 25px rgba(0,0,0,0.35)",
+              color: "#F2EAE0",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.45)",
+              fontFamily: monoFont,
+              fontSize: "12px",
+              padding: "10px 14px",
             }}
             labelStyle={{
-              color: "#CBD5E1",
+              color: "#A89F94",
+              marginBottom: "4px",
+            }}
+            itemStyle={{
+              color: "#F2EAE0",
             }}
             formatter={(value) => formatTooltipDuration(value)}
             labelFormatter={(label) =>
@@ -139,10 +149,12 @@ const SessionBarGraph = ({ data, onDayClick }) => {
 
           <Legend
             wrapperStyle={{
-              color: "#CBD5E1",
+              color: "#A89F94",
               paddingTop: "20px",
+              fontSize: "12px",
+              fontFamily: monoFont,
             }}
-            iconType="circle"
+            iconType="square"
           />
 
           <Bar

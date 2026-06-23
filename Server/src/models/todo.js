@@ -68,6 +68,7 @@ export const updateTodo = async (todoId, fields) => {
     WHERE todo_id = $3 RETURNING *;
   `;
   const { rows } = await query(sql, [status, completed_at, todoId]);
+  // console.log('updateTodo result:', rows); // Debugging line to check the query result
   return rows[0];
 };
 

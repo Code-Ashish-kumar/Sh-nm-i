@@ -3,7 +3,9 @@ const BASE_URL = "http://localhost:5000/api/v1"
 // AUTH ENDPOINTS
 export const endpoints = {
     SIGNUP_API: BASE_URL + "/auth/register",
-    LOGIN_API:  BASE_URL + "/auth/login"
+    LOGIN_API:  BASE_URL + "/auth/login",
+    ME_API:     BASE_URL + "/auth/me",
+    LOGOUT_API: BASE_URL + "/auth/logout"
 }
 
 // SUBJECT ENDPOINTS
@@ -29,6 +31,7 @@ export const sessionEndpoints = {
 
 // ANALYTICS ENDPOINTS
 export const analyticsEndpoints = {
-    USER_ANALYTICS_API: BASE_URL + "/analytics/dashboard",
-    USER_TIMELINE_API:  BASE_URL + "/analytics/timeline"
+    USER_ANALYTICS_API:      BASE_URL + "/analytics/dashboard",
+    USER_TIMELINE_API:       BASE_URL + "/analytics/timeline",
+    USER_CURRENT_STREAK_API: BASE_URL + "/analytics/current_streak"
 }

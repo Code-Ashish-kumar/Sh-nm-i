@@ -1,47 +1,89 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { apiConnector } from '../services/apiConnector'; // Adjust path if needed
-import { analyticsEndpoints } from '../services/api'; // Adjust path if needed
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from "react-router-dom";
+import { apiConnector } from '../services/apiConnector';
+import { analyticsEndpoints } from '../services/api';
+import { fetchAnalyticsDashboard } from '../services/Operations/analyticsAPI';
+import { logout } from '../services/Operations/authAPI';
+import { clearAuth } from '../slices/authSlice';
 
+import SideNav from '../components/layout/SideNav';
 import StatTiles from '../components/core/Analytics/StatTiles';
-import SubjectPieChart from '../components/core/Analytics/SubjectPieChart'; 
+import SubjectPieChart from '../components/core/Analytics/SubjectPieChart';
 import SessionBarGraph from '../components/core/Analytics/SessionBarGraph';
 import TodoHeatmap from '../components/core/Analytics/TodoHeatmap';
-import DailyTimelineGraph from '../components/core/Analytics/DailyTimelineGraph'; 
+import DailyTimelineGraph from '../components/core/Analytics/DailyTimelineGraph';
+
+const displayFont = { fontFamily: "'Fraunces', Georgia, serif" };
+const monoFont = { fontFamily: "'JetBrains Mono', monospace" };
 
 const Analytics = () => {
-  // 1. State for Dashboard Data
-  // const [dashboardData, setDashboardData] = useState({
-  //   tileStats: null,
-  //   pieChart: [],
-  //   barGraph: [],
-  //   heatmap: []
-  // });
+  const [dashboardData, setDashboardData] = useState({
+    tileStats: null,
+    pieChart: [],
+    barGraph: [],
+    heatmap: []
+  });
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
 
-  // 2. State for Timeline Modal
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const user = useSelector((state) => state.auth.user);
+  const isIdle = false;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [timelineData, setTimelineData] = useState([]);
   const [isTimelineLoading, setIsTimelineLoading] = useState(false);
 
-  const token = useSelector((state) => state.auth.token); 
-  
-  // 3. Fetch Dashboard Data on Mount
+  // const token = useSelector((state) => state.auth.token);
+
+  const fillLast7Days = (barGraphData) => {
+    const map = new Map();
+
+    barGraphData.forEach((item) => {
+      const date = new Date(item.date).toISOString().split("T")[0];
+      map.set(date, item);
+    });
+
+    const result = [];
+    const today = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+
+      result.push(
+        map.get(dateStr) || {
+          date: dateStr,
+          focus_duration: 0,
+          break_duration: 0,
+        }
+      );
+    }
+
+    return result;
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setIsDashboardLoading(true);
-        const response = await apiConnector(
-          "GET", 
-          analyticsEndpoints.USER_ANALYTICS_API, 
-          null, 
-          { Authorization: `Bearer ${token}` } // Send token in headers
-        );
-        
-        // Destructure and save to state
-        const { tileStats, pieChart, barGraph, heatmap } = response;
-        // setDashboardData({ tileStats, pieChart, barGraph, heatmap });
+        // const response = await apiConnector(
+        //   "GET",
+        //   analyticsEndpoints.USER_ANALYTICS_API,
+        //   null
+        // );
+
+        const { tileStats, pieChart, barGraph, heatmap } = await fetchAnalyticsDashboard();
+        setDashboardData({
+          tileStats,
+          pieChart,
+          barGraph: fillLast7Days(barGraph),
+          heatmap,
+        });
       } catch (error) {
         console.error("Could not fetch analytics dashboard data:", error);
       } finally {
@@ -49,250 +91,33 @@ const Analytics = () => {
       }
     };
 
-    if (token) {
-      fetchDashboardData();
-    }
-  }, [token]);
+    fetchDashboardData();
+  }, [user]);
 
-  const [dashboardData, setDashboardData] = useState({
-  tileStats: {
-    total_focus_time: 48600, // 13h 30m
-    sessions_completed: 24,
-    average_session_time: 2025, // ~34m
-    top_subject: "Data Structures"
-  },
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch { /* ignore */ }
 
-  pieChart: [
-    {
-      subject_name: "Data Structures",
-      total_duration: 16200 // 4h 30m
-    },
-    {
-      subject_name: "Operating Systems",
-      total_duration: 10800 // 3h
-    },
-    {
-      subject_name: "DBMS",
-      total_duration: 9000 // 2h 30m
-    },
-    {
-      subject_name: "Computer Networks",
-      total_duration: 7200 // 2h
-    },
-    {
-      subject_name: "System Design",
-      total_duration: 5400 // 1h 30m
-    }
-  ],
+    dispatch(clearAuth());
+    navigate("/");
+  };
 
-  barGraph: [
-    {
-      date: "2026-06-12",
-      focus_duration: 7200,
-      break_duration: 1200
-    },
-    {
-      date: "2026-06-13",
-      focus_duration: 5400,
-      break_duration: 900
-    },
-    {
-      date: "2026-06-14",
-      focus_duration: 10800,
-      break_duration: 1800
-    },
-    {
-      date: "2026-06-15",
-      focus_duration: 3600,
-      break_duration: 600
-    },
-    {
-      date: "2026-06-16",
-      focus_duration: 12600,
-      break_duration: 2100
-    },
-    {
-      date: "2026-06-17",
-      focus_duration: 9000,
-      break_duration: 1500
-    },
-    {
-      date: "2026-06-18",
-      focus_duration: 7200,
-      break_duration: 1200
-    }
-  ],
-
-  heatmap: [
-    {
-      date: "2026-05-20",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-05-21",
-      completed_tasks: 3,
-      total_tasks: 5
-    },
-    {
-      date: "2026-05-22",
-      completed_tasks: 1,
-      total_tasks: 4
-    },
-    {
-      date: "2026-05-23",
-      completed_tasks: 4,
-      total_tasks: 5
-    },
-    {
-      date: "2026-05-24",
-      completed_tasks: 0,
-      total_tasks: 3
-    },
-    {
-      date: "2026-05-25",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-05-26",
-      completed_tasks: 2,
-      total_tasks: 4
-    },
-    {
-      date: "2026-05-27",
-      completed_tasks: 4,
-      total_tasks: 4
-    },
-    {
-      date: "2026-05-28",
-      completed_tasks: 3,
-      total_tasks: 5
-    },
-    {
-      date: "2026-05-29",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-05-30",
-      completed_tasks: 1,
-      total_tasks: 4
-    },
-    {
-      date: "2026-05-31",
-      completed_tasks: 4,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-01",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-02",
-      completed_tasks: 2,
-      total_tasks: 4
-    },
-    {
-      date: "2026-06-03",
-      completed_tasks: 3,
-      total_tasks: 4
-    },
-    {
-      date: "2026-06-04",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-05",
-      completed_tasks: 4,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-06",
-      completed_tasks: 1,
-      total_tasks: 4
-    },
-    {
-      date: "2026-06-07",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-08",
-      completed_tasks: 4,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-09",
-      completed_tasks: 3,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-10",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-11",
-      completed_tasks: 2,
-      total_tasks: 4
-    },
-    {
-      date: "2026-06-12",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-13",
-      completed_tasks: 4,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-14",
-      completed_tasks: 3,
-      total_tasks: 4
-    },
-    {
-      date: "2026-06-15",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-16",
-      completed_tasks: 4,
-      total_tasks: 4
-    },
-    {
-      date: "2026-06-17",
-      completed_tasks: 5,
-      total_tasks: 5
-    },
-    {
-      date: "2026-06-18",
-      completed_tasks: 5,
-      total_tasks: 5
-    }
-  ]
-});
-
-  // 4. Fetch Timeline Data when a Bar is Clicked
   const handleDayClick = async (date) => {
     setSelectedDate(date);
     setIsModalOpen(true);
     setIsTimelineLoading(true);
-    
+
     try {
-      // Fetch data for the specific clicked date using query params
       const response = await apiConnector(
-        "GET", 
-        `${analyticsEndpoints.USER_TIMELINE_API}?date=${date}`, 
-        null, 
-        { Authorization: `Bearer ${token}` }
+        "GET",
+        `${analyticsEndpoints.USER_TIMELINE_API}?date=${date}`,
+        null,
       );
-      
-      setTimelineData(response.data.dailyTimeline || []);
+
+      console.log("Daily timeline API response:", response);
+
+      setTimelineData(response.dailyTimeline || []);
     } catch (error) {
       console.error("Could not fetch daily timeline data:", error);
       setTimelineData([]);
@@ -301,207 +126,151 @@ const Analytics = () => {
     }
   };
 
-  // 5. Loading State UI
   if (isDashboardLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-xl font-semibold text-slate-400 animate-pulse">Loading Analytics...</div>
+      <div className="min-h-screen bg-[#15120F] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#2A241E] border-t-[#E8553D] rounded-full animate-spin" />
+          <p className="text-sm text-[#A89F94]" style={monoFont}>Loading analytics…</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8 relative">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#15120F] flex">
+      <SideNav
+        userName={user?.name}
+        onLogout={handleLogout}
+        darkMode={!isIdle}
+      />
 
-        {/* Header */}
-        <div className="mb-10">
-          <h1 className="text-4xl font-bold text-white">
-            Analytics Dashboard
-          </h1>
+      <main className="flex-1 relative ml-16 p-8">
+        <div className="max-w-7xl mx-auto">
 
-          <p className="text-slate-400 mt-2">
-            Understand your study habits and productivity trends.
-          </p>
-        </div>
-
-        {/* ======================= */}
-        {/* Stat Tiles */}
-        {/* ======================= */}
-        <div className="mb-8">
-          <StatTiles data={dashboardData.tileStats} />
-        </div>
-
-        {/* ======================= */}
-        {/* Heatmap + Pie Chart */}
-        {/* ======================= */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-8">
-
-          {/* Heatmap */}
-          {/* <div
-            className="
-              xl:col-span-8
-              bg-slate-900
-              border border-slate-800
-              rounded-3xl
-              p-6
-              shadow-lg
-            "
-          >
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-white">
-                Consistency Heatmap
-              </h2>
-
-              <p className="text-sm text-slate-400 mt-1">
-                Task completion activity during the last 30 days
-              </p>
-            </div>
-
-            {/* <TodoHeatmap data={dashboardData.heatmap} /> 
-            
-          </div> */}
-
-        <div
-          className="
-            xl:col-span-8
-              bg-slate-900
-              border border-slate-800
-              rounded-3xl
-              p-6
-              shadow-lg
-          "
-        >
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">
-              Daily Activity Analysis
-            </h2>
-
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <div className="w-2 h-2 rounded-full bg-indigo-500" />
-              Click bars to inspect timeline
-            </div>
-
-            <p className="text-sm text-slate-400 mt-1">
-              Focus vs break time over the last 7 days.
-              Click a day to inspect its timeline.
+          {/* Header */}
+          <div className="mb-10">
+            <p
+              className="text-xs uppercase tracking-[0.2em] text-[#E8553D] mb-2"
+              style={monoFont}
+            >
+              Study Analytics
+            </p>
+            <h1 className="text-4xl text-[#F2EAE0]" style={displayFont}>
+              Your focus, mapped
+            </h1>
+            <p className="text-[#A89F94] mt-2">
+              Understand your study habits and productivity trends.
             </p>
           </div>
 
-          <SessionBarGraph
-            data={dashboardData.barGraph}
-            onDayClick={handleDayClick}
-          />
-        </div>
-
-          {/* Pie Chart */}
-          <div
-            className="
-              xl:col-span-4
-              bg-slate-900
-              border border-slate-800
-              rounded-3xl
-              p-6
-              shadow-lg
-            "
-          >
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-white">
-                Subject Distribution
-              </h2>
-
-              <p className="text-sm text-slate-400 mt-1">
-                Time allocation across subjects
-              </p>
-            </div>
-
-            <SubjectPieChart data={dashboardData.pieChart} />
+          {/* Stat Tiles */}
+          <div className="mb-8">
+            <StatTiles data={dashboardData.tileStats} />
           </div>
 
-        </div>
+          {/* Activity Graph + Subject Distribution */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
 
-        {/* ======================= */}
-        {/* Activity Graph */}
-        {/* ======================= */}
-        <div
-          className="
-            bg-slate-900
-            border border-slate-800
-            rounded-3xl
-            p-6
-            shadow-lg
-          "
-        >
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">
-              Daily Activity Analysis
-            </h2>
+            <div className="xl:col-span-8 bg-[#1F1A16] border border-[#2A241E] rounded-md p-6">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl text-[#F2EAE0]" style={displayFont}>
+                    Daily Activity
+                  </h2>
+                  <p className="text-sm text-[#A89F94] mt-1">
+                    Focus vs. break time over the last 7 days
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-[#A89F94] shrink-0 mt-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#E8553D]" />
+                  Click a bar to inspect
+                </div>
+              </div>
 
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <div className="w-2 h-2 rounded-full bg-indigo-500" />
-              Click bars to inspect timeline
+              <SessionBarGraph
+                data={dashboardData.barGraph}
+                onDayClick={handleDayClick}
+              />
             </div>
 
-            <p className="text-sm text-slate-400 mt-1">
-              Focus vs break time over the last 7 days.
-              Click a day to inspect its timeline.
-            </p>
-          </div>
-
-          <SessionBarGraph
-            data={dashboardData.barGraph}
-            onDayClick={handleDayClick}
-          />
-        </div>
-
-      </div>
-        
-        
-
-      {/* 4. The Modal Overlay */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl w-11/12 max-w-4xl relative">
-            
-            {/* Modal Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-white">
-                  Daily Timeline
+            <div className="xl:col-span-4 bg-[#1F1A16] border border-[#2A241E] rounded-md p-6">
+              <div className="mb-8 lg:mb-14">
+                <h2 className="text-xl text-[#F2EAE0]" style={displayFont}>
+                  Subject Distribution
                 </h2>
-                <p className="text-sm text-slate-400`">
-                  Hourly breakdown for {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                <p className="text-sm text-[#A89F94] mt-1">
+                  Time allocation across subjects
                 </p>
               </div>
-              
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full p-2 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            </div>
 
-            {/* Modal Content: Show Spinner if API is still fetching, else show Chart */}
-            <div className="w-full h-80">
-              {isTimelineLoading ? (
-                <div className="flex items-center justify-center h-full text-indigo-500 animate-pulse">
-                  Loading timeline data...
-                </div>
-              ) : timelineData.length > 0 ? (
-                 <DailyTimelineGraph data={timelineData} />
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-400 bg-slate-800 rounded-xl">
-                  No activity recorded for this date.
-                </div>
-              )}
+              <SubjectPieChart data={dashboardData.pieChart} />
             </div>
 
           </div>
+
+          {/* Consistency Heatmap
+          <div className="bg-[#1F1A16] border border-[#2A241E] rounded-3xl p-6">
+            <div className="mb-6">
+              <h2 className="text-xl text-[#F2EAE0]" style={displayFont}>
+                Consistency
+              </h2>
+              <p className="text-sm text-[#A89F94] mt-1">
+                Task completion activity over the last 30 days
+              </p>
+            </div>
+
+            <TodoHeatmap data={dashboardData.heatmap} />
+          </div> */}
+
         </div>
-      )}
+
+        {/* Timeline Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-[#1F1A16] border border-[#2A241E] p-6 rounded-3xl shadow-2xl w-11/12 max-w-4xl relative">
+              <div className="absolute top-0 left-6 right-6 h-[3px] bg-[#E8553D] rounded-b-full" />
+
+              <div className="flex justify-between items-center mb-6 pt-2">
+                <div>
+                  <h2 className="text-2xl text-[#F2EAE0]" style={displayFont}>
+                    Daily Timeline
+                  </h2>
+                  <p className="text-sm text-[#A89F94] mt-1">
+                    Hourly breakdown for{" "}
+                    {new Date(selectedDate).toLocaleDateString('en-US', {
+                      weekday: 'long', month: 'short', day: 'numeric'
+                    })}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-[#A89F94] hover:text-[#F2EAE0] bg-[#15120F] hover:bg-[#2A241E] border border-[#2A241E] rounded-full p-2 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="w-full h-80">
+                {isTimelineLoading ? (
+                  <div className="flex items-center justify-center h-full text-[#E8553D] text-sm" style={monoFont}>
+                    Loading timeline data…
+                  </div>
+                ) : timelineData.length > 0 ? (
+                  <DailyTimelineGraph data={timelineData} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-[#A89F94] bg-[#15120F] border border-[#2A241E] rounded-xl">
+                    No activity recorded for this date.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 };

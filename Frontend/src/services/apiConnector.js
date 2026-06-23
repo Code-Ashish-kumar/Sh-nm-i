@@ -1,6 +1,8 @@
 export const apiConnector = async (method, url, bodyData = null, headers = null, params = null) => {
     // Safely append query parameters to the URL
     let finalUrl = url;
+
+    // console.log(`API Connector called with method: ${method}, url: ${url}, bodyData:`, bodyData, ", headers:", headers, ", params:", params);
     if (params) {
         const queryString = new URLSearchParams(params).toString();
         finalUrl = `${url}?${queryString}`;
@@ -25,6 +27,8 @@ export const apiConnector = async (method, url, bodyData = null, headers = null,
 
     // Execute request
     const response = await fetch(finalUrl, config);
+
+    // console.log(`API Connector response for ${method} ${finalUrl}:`, response);
     
     // Parse response data based on content type
     const isJson = response.headers.get("content-type")?.includes("application/json");

@@ -40,7 +40,7 @@ export async function endSession({ sessionId, actualDuration }) {
             actual_duration: actualDuration,
         });
 
-        console.log("END SESSION RESPONSE:", data);
+        // console.log("END SESSION RESPONSE:", data);
         return data;
     } catch (error) {
         console.error("END SESSION ERROR:", error);

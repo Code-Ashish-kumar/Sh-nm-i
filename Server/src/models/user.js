@@ -10,7 +10,9 @@ export const createUserTable = async () => {
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      current_streak INTEGER DEFAULT 0,
+      last_streak_date DATE
     );
   `;
   await query(sql);
@@ -54,4 +56,37 @@ export const findUserByEmail = async (email) => {
   
   // Return the user if found, otherwise return null
   return rows.length > 0 ? rows[0] : null; 
+};
+
+// Function to find a user by ID (for session validation)
+export const findUserById = async (userId) => {
+  const sql = `SELECT user_id, name, email, current_streak FROM users WHERE user_id = $1;`;
+  const { rows } = await query(sql, [userId]);
+
+  console.log('findUserById result:', rows); // Debugging line to check the query result
+  return rows.length > 0 ? rows[0] : null;
+};
+
+// Function to update the user's current streak and last streak date
+export const updateUserStreak = async (userId) => {
+  const sql = `
+    UPDATE users
+    SET
+      current_streak = CASE
+        WHEN last_streak_date = CURRENT_DATE THEN current_streak
+
+        WHEN last_streak_date = CURRENT_DATE - INTERVAL '1 day'
+          THEN current_streak + 1
+
+        ELSE 1
+      END,
+
+      last_streak_date = CURRENT_DATE
+
+    WHERE user_id = $1
+    RETURNING current_streak;
+  `;
+
+  const { rows } = await query(sql, [userId]);
+  return rows[0];
 };

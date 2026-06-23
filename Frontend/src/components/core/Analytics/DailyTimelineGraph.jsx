@@ -1,113 +1,184 @@
-import React from 'react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
-} from 'recharts';
+import React from "react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  Cell,
+} from "recharts";
+
+const monoFont = "'JetBrains Mono', monospace";
 
 const DailyTimelineGraph = ({ data }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        No session data available for this day.
+      <div className="flex items-center justify-center h-[350px] text-[#7A7164] text-sm">
+        No activity recorded for this day
       </div>
     );
   }
 
-  // Format tooltip to show accurate hours/minutes
-  const formatTooltipDuration = (seconds) => {
+  const formatDuration = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
-    if (hrs > 0 && mins > 0) return [`${hrs}h ${mins}m`];
-    if (hrs > 0) return [`${hrs}h`];
-    return [`${mins}m`];
+
+    if (hrs > 0 && mins > 0) return `${hrs}h ${mins}m`;
+    if (hrs > 0) return `${hrs}h`;
+    return `${mins}m`;
   };
 
-  // Convert raw seconds to just minutes (or hours) for the Y-Axis ticks
-  const formatYAxisTick = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    return mins > 0 ? `${mins}m` : '0';
+  const formatHour = (hour) => {
+    if (hour === 0) return "12AM";
+    if (hour === 12) return "12PM";
+    return hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
   };
 
-  // Format the 24-hour integers (0, 1, 14, 23) into clean readable times (12 AM, 1 AM, 2 PM)
-  const formatHourLabel = (hour) => {
-    if (hour === 0 || hour === 24) return '12 AM';
-    if (hour === 12) return '12 PM';
-    return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
-  };
+  const formatTooltipHour = (hour) => {
+    const nextHour = (hour + 1) % 24;
 
-  // Custom Tooltip Label (e.g., changing "14" to "2:00 PM - 3:00 PM")
-  const formatTooltipLabel = (hour) => {
-    const nextHour = hour + 1;
-    return `${formatHourLabel(hour)} - ${formatHourLabel(nextHour)}`;
-  };
+    const format = (h) => {
+      if (h === 0) return "12:00 AM";
+      if (h === 12) return "12:00 PM";
+      return h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`;
+    };
 
-  // Define the exact ticks we want to show on the X-axis (every 4 hours to prevent crowding)
-  const xTicks = [0, 4, 8, 12, 16, 20, 24];
+    return `${format(hour)} - ${format(nextHour)}`;
+  };
 
   return (
-    <div style={{ width: '100%', height: '350px' }}>
+    <div className="w-full h-[380px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
+        <BarChart
           data={data}
-          margin={{ top: 20, right: 30, left: -10, bottom: 5 }}
+          margin={{
+            top: 10,
+            right: 20,
+            left: 0,
+            bottom: 10,
+          }}
         >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          
-          <XAxis 
-            dataKey="hour" 
-            type="number" // Forces a continuous 0-24 numerical scale
-            domain={[0, 24]} 
-            ticks={xTicks} // Locks the labels to specific intervals
-            tickFormatter={formatHourLabel} 
+          <defs>
+            <linearGradient
+              id="timelineFocusGradient"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="0%" stopColor="#F07A5F" />
+              <stop offset="100%" stopColor="#E8553D" />
+            </linearGradient>
+
+            <linearGradient
+              id="timelineBreakGradient"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="0%" stopColor="#A9C599" />
+              <stop offset="100%" stopColor="#8FAE7D" />
+            </linearGradient>
+          </defs>
+
+          <CartesianGrid
+            stroke="#2A241E"
+            strokeDasharray="4 4"
+            vertical={false}
+          />
+
+          <XAxis
+            dataKey="hour"
+            tickFormatter={formatHour}
+            interval={1}
             axisLine={false}
             tickLine={false}
+            tick={{
+              fill: "#A89F94",
+              fontSize: 11,
+              fontFamily: monoFont,
+            }}
             dy={10}
           />
-          
-          <YAxis 
-            tickFormatter={formatYAxisTick} 
+
+          <YAxis
+            tickFormatter={(value) =>
+              value === 0
+                ? ""
+                : `${Math.round(value / 60)}m`
+            }
             axisLine={false}
             tickLine={false}
+            tick={{
+              fill: "#A89F94",
+              fontSize: 12,
+              fontFamily: monoFont,
+            }}
+            width={50}
           />
-          
-          <Tooltip 
-            formatter={formatTooltipDuration}
-            labelFormatter={formatTooltipLabel}
-            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+
+          <Tooltip
+            cursor={{
+              fill: "rgba(232,85,61,0.08)",
+            }}
+            contentStyle={{
+              background: "#1F1A16",
+              border: "1px solid #2A241E",
+              borderRadius: "16px",
+              color: "#F2EAE0",
+              boxShadow:
+                "0 10px 25px rgba(0,0,0,0.45)",
+              fontFamily: monoFont,
+              fontSize: "12px",
+              padding: "10px 14px",
+            }}
+            labelStyle={{
+              color: "#A89F94",
+            }}
+            formatter={(value) =>
+              formatDuration(value)
+            }
+            labelFormatter={formatTooltipHour}
           />
-          
-          <Legend verticalAlign="top" height={36} />
-          
-          {/* SOLID LINE: Focus Time */}
-          <Line 
-            type="monotone" 
-            dataKey="focus_duration" 
-            name="Focus Time" 
-            stroke="#6366f1" 
-            strokeWidth={3}
-            dot={{ r: 4, strokeWidth: 2 }}
-            activeDot={{ r: 6 }}
+
+          <Legend
+            wrapperStyle={{
+              color: "#A89F94",
+              paddingTop: "20px",
+              fontSize: "12px",
+              fontFamily: monoFont,
+            }}
+            iconType="square"
           />
-          
-          {/* DOTTED LINE: Break Time */}
-          {/* strokeDasharray="5 5" creates the dotted/dashed effect */}
-          <Line 
-            type="monotone" 
-            dataKey="break_duration" 
-            name="Break Time" 
-            stroke="#10b981" 
-            strokeWidth={3}
-            strokeDasharray="5 5" 
-            dot={{ r: 4, strokeWidth: 2 }}
-            activeDot={{ r: 6 }}
-          />
-        </LineChart>
+
+          <Bar
+            dataKey="focus_duration"
+            name="Focus Time"
+            fill="url(#timelineFocusGradient)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={22}
+          >
+            {data.map((_, index) => (
+              <Cell key={index} />
+            ))}
+          </Bar>
+
+          <Bar
+            dataKey="break_duration"
+            name="Break Time"
+            fill="url(#timelineBreakGradient)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={22}
+          >
+            {data.map((_, index) => (
+              <Cell key={index} />
+            ))}
+          </Bar>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

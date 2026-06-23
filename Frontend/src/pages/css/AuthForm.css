@@ -1,3 +1,28 @@
+:root {
+    /* Colors */
+    --bg-surface: #ffffff;
+    --bg-elevated: #ffffff;
+
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+
+    --border: #cbd5e1;
+
+    --accent: #111827;
+    --accent-hover: #1f2937;
+
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+
+    /* Typography */
+    --font-mono: "JetBrains Mono", monospace;
+
+    /* Animation */
+    --transition: 0.2s ease;
+}
+
 .auth-page {
     flex: 1;
     display: flex;
@@ -91,7 +116,7 @@
     width: 100%;
     padding: 0.75rem;
     background: var(--accent);
-    color: #0f0f0f;
+    color: #ffffff;
     font-family: var(--font-mono);
     font-size: 0.85rem;
     font-weight: 600;

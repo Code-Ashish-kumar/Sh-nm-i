@@ -9,7 +9,7 @@ import { subjectEndpoints } from "../api";
 export async function getUserSubjects() {
     try {
         const data = await apiConnector("GET", subjectEndpoints.GET_USER_SUBJECTS_API);
-        console.log("GET SUBJECTS RESPONSE:", data);
+        // console.log("GET SUBJECTS RESPONSE:", data);
         return data.subjects; // array of subject objects
     } catch (error) {
         console.error("GET SUBJECTS ERROR:", error);
@@ -28,7 +28,7 @@ export async function createSubject(subjectName) {
         const data = await apiConnector("POST", subjectEndpoints.CREATE_SUBJECT_API, {
             subject_name: subjectName,
         });
-        console.log("CREATE SUBJECT RESPONSE:", data);
+        // console.log("CREATE SUBJECT RESPONSE:", data);
         return data.subject;
     } catch (error) {
         console.error("CREATE SUBJECT ERROR:", error);

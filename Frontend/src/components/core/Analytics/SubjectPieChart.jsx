@@ -8,19 +8,21 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const monoFont = "'JetBrains Mono', monospace";
+
 const COLORS = [
-  "#818CF8",
-  "#34D399",
-  "#FBBF24",
-  "#F87171",
-  "#A78BFA",
-  "#22D3EE",
+  "#E8553D", // tomato
+  "#8FAE7D", // sage
+  "#D9A441", // marigold
+  "#6FA3A0", // teal
+  "#B5739E", // plum
+  "#6B8CAE", // denim
 ];
 
 const SubjectPieChart = ({ data }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[350px] text-slate-500">
+      <div className="flex items-center justify-center h-[350px] text-[#7A7164] text-sm">
         No session data available
       </div>
     );
@@ -40,10 +42,6 @@ const SubjectPieChart = ({ data }) => {
     return `${mins}m`;
   };
 
-  const formatTooltipDuration = (seconds) => {
-    return [formatDuration(seconds), "Time Spent"];
-  };
-
   return (
     <div className="w-full h-[350px]">
       <ResponsiveContainer width="100%" height="100%">
@@ -57,9 +55,9 @@ const SubjectPieChart = ({ data }) => {
             innerRadius={75}
             outerRadius={115}
             paddingAngle={3}
-            stroke="none"
+            stroke="#1F1A16"
+            strokeWidth={2}
             labelLine={false}
-            activeOuterRadius={125}
           >
             {data.map((entry, index) => (
               <Cell
@@ -72,62 +70,67 @@ const SubjectPieChart = ({ data }) => {
           {/* Center Content */}
           <text
             x="50%"
-            y="42%"
+            y="41%"
             textAnchor="middle"
             dominantBaseline="middle"
-            fill="#CBD5E1"
-            fontSize="12"
+            fill="#A89F94"
+            fontSize="11"
+            fontFamily={monoFont}
+            style={{ letterSpacing: '0.1em', textTransform: 'uppercase' }}
           >
             Total Focus
           </text>
 
           <text
             x="50%"
-            y="50%"
+            y="51%"
             textAnchor="middle"
             dominantBaseline="middle"
-            fill="#FFFFFF"
-            fontSize="22"
-            fontWeight="700"
+            fill="#E8553D"
+            fontSize="24"
+            fontWeight="600"
+            fontFamily={monoFont}
           >
             {Math.floor(totalDuration / 3600)}h
           </text>
 
           <Tooltip
-            formatter={formatTooltipDuration}
             contentStyle={{
-              backgroundColor: "#0F172A",
-              border: "1px solid #334155",
+              backgroundColor: "#1F1A16",
+              border: "1px solid #2A241E",
               borderRadius: "16px",
-              color: "#fff",
-              boxShadow:
-                "0 10px 25px rgba(0,0,0,0.35)",
+              color: "#F2EAE0",
+              fontFamily: monoFont,
+              fontSize: "12px",
+              padding: "10px 14px",
             }}
-            labelStyle={{
-              color: "#CBD5E1",
+            itemStyle={{ color: "#F2EAE0" }}
+            labelStyle={{ color: "#A89F94" }}
+            formatter={(value, name, props) => {
+              const percentage = (
+                (value / totalDuration) *
+                100
+              ).toFixed(1);
+
+              return [
+                `${formatDuration(value)} (${percentage}%)`,
+                props.payload.subject_name,
+              ];
             }}
           />
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {data.map((subject, index) => (
-              <div
-                key={subject.subject_name}
-                className="flex items-center gap-2 text-sm"
-              >
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{
-                    backgroundColor:
-                      COLORS[index % COLORS.length],
-                  }}
-                />
-
-                <span className="text-slate-300 truncate">
-                  {subject.subject_name}
-                </span>
-              </div>
-            ))}
-          </div>
+          {/* <Legend
+            verticalAlign="bottom"
+            align="center"
+            iconType="circle"
+            iconSize={8}
+            wrapperStyle={{
+              color: "#A89F94",
+              paddingTop: "20px",
+              fontSize: "12px",
+              fontFamily: monoFont,
+            }}
+          /> */}
         </PieChart>
       </ResponsiveContainer>
     </div>
