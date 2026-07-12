@@ -62,10 +62,10 @@ export const login = async (req, res) => {
 
     // Attach the token to an httpOnly cookie
     res.cookie('jwt', token, {
-      httpOnly: true, // Prevents JavaScript (XSS) from reading the cookie
-      secure: process.env.NODE_ENV === 'production', // Use true if using HTTPS
-      sameSite: 'strict', // Prevents CSRF attacks
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.status(200).json({
@@ -109,7 +109,7 @@ export const logout = (req, res) => {
   res.clearCookie('jwt', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
   });
   res.status(200).json({ message: 'Logged out successfully' });
 };

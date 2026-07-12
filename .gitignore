@@ -1,7 +1,8 @@
 # Root gitignore for repository
-# Ignore Frontend environment file
+# Ignore environment files
 Frontend/.env
+Server/.env
 
-# Node and build artifacts (optional)
+# Node and build artifacts
 node_modules/
 dist/

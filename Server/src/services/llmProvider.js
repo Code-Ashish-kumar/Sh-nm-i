@@ -111,28 +111,23 @@ async function groqChat(messages, tools) {
 // ─── Embeddings ─────────────────────────────────────────────────────────────
 
 export const generateEmbedding = async (text) => {
-    if (LLM_PROVIDER === 'groq') {
+    if (LLM_PROVIDER === 'groq' || !process.env.OLLAMA_URL) {
         if (process.env.HF_API_KEY) {
             return await hfEmbedding(text);
         }
-        return await ollamaEmbedding(text);
     }
     return await ollamaEmbedding(text);
 };
 
 /**
- * Batch embed multiple texts in a single Ollama call.
- * Ollama's /api/embed accepts an array of inputs and returns all embeddings at once.
- * This is 5-10x faster than calling one at a time.
+ * Batch embed multiple texts in a single call.
+ * Uses Ollama locally or HuggingFace in production.
  */
 export const generateEmbeddingBatch = async (texts) => {
-    if (LLM_PROVIDER === 'groq' && process.env.HF_API_KEY) {
-        // HF doesn't easily batch, fall back to sequential
-        const results = [];
-        for (const text of texts) {
-            results.push(await hfEmbedding(text));
+    if (LLM_PROVIDER === 'groq' || !process.env.OLLAMA_URL) {
+        if (process.env.HF_API_KEY) {
+            return await hfEmbeddingBatch(texts);
         }
-        return results;
     }
     return await ollamaEmbeddingBatch(texts);
 };
@@ -200,6 +195,30 @@ async function hfEmbedding(text) {
     
     // Truncate to 768 dims if needed (nomic v1.5 outputs 768 by default)
     return embedding.slice(0, 768);
+}
+
+async function hfEmbeddingBatch(texts) {
+    // HuggingFace supports batch inputs natively
+    const response = await fetch(
+        'https://api-inference.huggingface.co/models/nomic-ai/nomic-embed-text-v1.5',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.HF_API_KEY}`,
+            },
+            body: JSON.stringify({ inputs: texts }),
+        }
+    );
+
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HuggingFace batch embed failed (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    // HF returns [[emb1], [emb2], ...] for batch
+    return data.map(emb => (Array.isArray(emb) ? emb : emb).slice(0, 768));
 }
 
 // ─── Tool format helpers ────────────────────────────────────────────────────
