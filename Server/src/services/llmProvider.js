@@ -175,7 +175,7 @@ async function hfEmbedding(text) {
             'Authorization': `Bearer ${process.env.VOYAGE_API_KEY}`,
         },
         body: JSON.stringify({ 
-            model: 'voyage-3-lite',
+            model: 'voyage-3',
             input: [text],
             output_dimension: 768,
         }),
@@ -198,7 +198,7 @@ async function hfEmbeddingBatch(texts) {
             'Authorization': `Bearer ${process.env.VOYAGE_API_KEY}`,
         },
         body: JSON.stringify({ 
-            model: 'voyage-3-lite',
+            model: 'voyage-3',
             input: texts,
             output_dimension: 768,
         }),
