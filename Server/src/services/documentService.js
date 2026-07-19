@@ -124,12 +124,14 @@ export const processDocument = async (documentId, fileData, fileType, fileName) 
         const chunks = chunkPages(pages);
         console.log(`Document split into ${chunks.length} chunks across ${pages.length} pages. Generating embeddings...`);
 
-        // Batch embed (Voyage AI allows up to 128 items per request)
-        const BATCH_SIZE = 128;
+        // Batch embed 
+        // Voyage AI free tier constraint: 3 RPM / 10K TPM without a payment method.
+        // Adding a payment method removes this limit, while the 200M free tokens still apply.
+        // If repeated retries are still happening, adding a payment method is the real fix.
+        const BATCH_SIZE = 25;
         for (let batchStart = 0; batchStart < chunks.length; batchStart += BATCH_SIZE) {
             const batch = chunks.slice(batchStart, batchStart + BATCH_SIZE);
             const texts = batch.map(c => c.content);
-
 
             const embeddings = await generateEmbeddingBatch(texts);
 

@@ -96,26 +96,41 @@ export const generateEmbeddingBatch = async (texts) => {
 };
 
 async function voyageEmbed(inputs) {
-    const response = await fetch('https://api.voyageai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.VOYAGE_API_KEY}`,
-        },
-        body: JSON.stringify({
-            model: 'voyage-3-lite',
-            input: inputs,
-            output_dimension: 512,
-        }),
-    });
+    let retries = 0;
+    const MAX_RETRIES = 4;
+    let delay = 5000;
 
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Voyage embed failed (${response.status}): ${errText}`);
+    while (retries <= MAX_RETRIES) {
+        const response = await fetch('https://api.voyageai.com/v1/embeddings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.VOYAGE_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: 'voyage-3-lite',
+                input: inputs,
+                output_dimension: 512,
+            }),
+        });
+
+        if (!response.ok) {
+            if (response.status === 429 && retries < MAX_RETRIES) {
+                retries++;
+                const retryAfter = response.headers.get('Retry-After');
+                const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : delay;
+                console.log(`Voyage rate-limited, retrying in ${waitTime / 1000}s (attempt ${retries}/${MAX_RETRIES})`);
+                await new Promise(r => setTimeout(r, waitTime));
+                delay = Math.min(delay * 2, 30000);
+                continue;
+            }
+            const errText = await response.text();
+            throw new Error(`Voyage embed failed (${response.status}): ${errText}`);
+        }
+
+        const data = await response.json();
+        return data.data.map(item => item.embedding);
     }
-
-    const data = await response.json();
-    return data.data.map(item => item.embedding);
 }
 
 async function ollamaEmbed(text) {

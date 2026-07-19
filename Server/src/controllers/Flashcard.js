@@ -5,19 +5,26 @@ export const generateFlashcards = async (req, res) => {
     try {
         const { id: subjectId } = req.params;
 
+        // Check if there are any documents at all for this subject
+        const docCheck = await query('SELECT id FROM documents WHERE subject_id = $1 LIMIT 1', [subjectId]);
+        if (docCheck.rowCount === 0) {
+            return res.status(404).json({ error: 'No documents found for this subject. Please upload notes first.' });
+        }
+
         // 1. Fetch random chunks from documents in this subject
         // We limit to 10 chunks to avoid massive context windows while ensuring variety.
         const sql = `
-            SELECT content 
-            FROM document_chunks 
-            WHERE subject_id = $1
+            SELECT dc.content 
+            FROM document_chunks dc
+            JOIN documents d ON dc.document_id = d.id
+            WHERE d.subject_id = $1 AND d.status = 'completed'
             ORDER BY RANDOM()
             LIMIT 10
         `;
         const result = await query(sql, [subjectId]);
 
         if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'No documents found for this subject. Please upload notes first.' });
+            return res.status(404).json({ error: 'Documents are still processing. Please try again in a moment.' });
         }
 
         const contextText = result.rows.map(row => row.content).join('\n\n');

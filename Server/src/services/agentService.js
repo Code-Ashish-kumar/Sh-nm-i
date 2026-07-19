@@ -46,18 +46,14 @@ const SYSTEM_PROMPT = `You are a Study Buddy AI that helps students understand t
 
 HOW TO ANSWER:
 1. First, search the user's uploaded notes using searchLocalNotes.
-2. If you find relevant content, EXPLAIN the concept in your own words using the source material. Do NOT just list citations — actually teach the concept.
-3. After your explanation, add a brief "📌 Reference:" section with book name and page numbers.
-4. If notes have nothing relevant, use searchWeb and clearly indicate the answer came from the internet.
-
-CRITICAL RETRIEVAL INSTRUCTION:
-When calling searchLocalNotes, always rewrite the query to be self-contained using the conversation so far — never pass a pronoun-only or vague follow-up as-is. For example, if the user asks "What is it?" after discussing backpropagation, your search query should be "backpropagation".
+2. If notes have nothing relevant, use searchWeb.
+3. Whether your information comes from searchLocalNotes or searchWeb, you must ALWAYS synthesize it into a clear explanation in your own words — never paste raw search snippets or a list of links as the answer. After explaining, cite what you used: for notes, the book/document title and page number; for web sources, the site name and URL.
 
 RESPONSE FORMAT:
 - Give a clear, educational explanation FIRST (2-4 paragraphs for complex topics, 1-2 for simple ones)
 - Use examples where helpful
 - Then add citations at the end:
-  📌 Reference: "Book Name" — Page X-Y
+  📌 Reference: "Source Name" — Page X-Y or URL
 
 IMPORTANT:
 - Your primary job is to EXPLAIN and TEACH, not just cite.
@@ -115,6 +111,35 @@ const formatNotesWithSources = (notes) => {
         
         return `${header}\n${note.content}`;
     }).join("\n\n---\n\n");
+};
+
+const rewriteQueryForRetrieval = async (rawQuery, history) => {
+    if (!history || history.length === 0) return rawQuery;
+
+    const historyText = history
+        .slice(-4)
+        .map(m => `${m.role === 'ai' ? 'Assistant' : 'User'}: ${m.text}`)
+        .join('\n');
+
+    const rewritePrompt = [
+        {
+            role: 'system',
+            content: 'Rewrite the latest message into a fully standalone search query, resolving any pronouns or references to earlier context. Return ONLY the rewritten query — no explanation, no quotes.'
+        },
+        {
+            role: 'user',
+            content: `Conversation so far:\n${historyText}\n\nLatest message to rewrite: "${rawQuery}"`
+        }
+    ];
+
+    try {
+        const result = await chatCompletion(rewritePrompt, null);
+        const rewritten = result.content?.trim();
+        return rewritten && rewritten.length > 0 ? rewritten : rawQuery;
+    } catch (err) {
+        console.error('Query rewrite failed, falling back to raw query:', err.message);
+        return rawQuery;
+    }
 };
 
 /**
@@ -176,9 +201,12 @@ export const runStudyBuddyAgent = async (subjectId, userMessage, chatHistory = [
             let toolResult = "";
 
             if (fnName === "searchLocalNotes") {
-                console.log("Agent → searchLocalNotes:", args.query);
+                console.log("Agent → searchLocalNotes (raw):", args.query);
                 try {
-                    const notes = await searchLocalNotes(args.query, subjectId, 5);
+                    const rewrittenQuery = await rewriteQueryForRetrieval(args.query, recentHistory);
+                    console.log("Agent → searchLocalNotes (rewritten):", rewrittenQuery);
+                    
+                    const notes = await searchLocalNotes(rewrittenQuery, subjectId, 8);
                     toolResult = formatNotesWithSources(notes);
                     
                     if (toolResult === "No relevant notes found in the user's documents.") {

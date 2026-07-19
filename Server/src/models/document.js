@@ -40,12 +40,23 @@ export const createDocumentTables = async () => {
     
     // Migrate embedding column to 512 dims if it was previously 768
     try {
-        // Clear old embeddings from incompatible models before resizing
-        await query(`DELETE FROM document_chunks WHERE embedding IS NOT NULL;`);
-        await query(`UPDATE documents SET status = 'failed' WHERE status = 'completed';`);
-        await query(`ALTER TABLE document_chunks ALTER COLUMN embedding TYPE vector(512);`);
+        const { rows } = await query(`
+            SELECT format_type(atttypid, atttypmod) AS type
+            FROM pg_attribute
+            WHERE attrelid = 'document_chunks'::regclass
+              AND attname = 'embedding'
+              AND NOT attisdropped
+        `);
+        const currentType = rows[0]?.type;
+
+        if (currentType && currentType !== 'vector(512)') {
+            // Clear old embeddings from incompatible models before resizing
+            await query(`DELETE FROM document_chunks WHERE embedding IS NOT NULL;`);
+            await query(`UPDATE documents SET status = 'failed' WHERE status = 'completed';`);
+            await query(`ALTER TABLE document_chunks ALTER COLUMN embedding TYPE vector(512);`);
+        }
     } catch (e) {
-        // Column already correct — ignore
+        // Table might not exist yet on fresh init, or other errors — ignore
     }
 
     // 4. Recreate HNSW index for fast similarity search
