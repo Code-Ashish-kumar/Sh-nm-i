@@ -111,23 +111,19 @@ async function groqChat(messages, tools) {
 // ─── Embeddings ─────────────────────────────────────────────────────────────
 
 export const generateEmbedding = async (text) => {
-    if (LLM_PROVIDER === 'groq' || !process.env.OLLAMA_URL) {
-        if (process.env.HF_API_KEY) {
-            return await hfEmbedding(text);
-        }
+    if (process.env.VOYAGE_API_KEY) {
+        return await hfEmbedding(text);
     }
     return await ollamaEmbedding(text);
 };
 
 /**
  * Batch embed multiple texts in a single call.
- * Uses Ollama locally or HuggingFace in production.
+ * Uses Voyage AI in production, Ollama locally.
  */
 export const generateEmbeddingBatch = async (texts) => {
-    if (LLM_PROVIDER === 'groq' || !process.env.OLLAMA_URL) {
-        if (process.env.HF_API_KEY) {
-            return await hfEmbeddingBatch(texts);
-        }
+    if (process.env.VOYAGE_API_KEY) {
+        return await hfEmbeddingBatch(texts);
     }
     return await ollamaEmbeddingBatch(texts);
 };
@@ -171,56 +167,50 @@ async function ollamaEmbedding(text) {
 }
 
 async function hfEmbedding(text) {
-    // Use Groq embeddings (same API key as chat — no extra signup)
-    const response = await fetch('https://api.groq.com/openai/v1/embeddings', {
+    // Voyage AI — 200M free tokens, reliable infrastructure
+    const response = await fetch('https://api.voyageai.com/v1/embeddings', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${GROQ_API_KEY}`,
+            'Authorization': `Bearer ${process.env.VOYAGE_API_KEY}`,
         },
         body: JSON.stringify({ 
-            model: 'embedding-001',
-            input: text,
+            model: 'voyage-3-lite',
+            input: [text],
+            output_dimension: 768,
         }),
     });
 
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Groq embed failed (${response.status}): ${errText}`);
+        throw new Error(`Voyage embed failed (${response.status}): ${errText}`);
     }
 
     const data = await response.json();
-    const embedding = data.data[0].embedding;
-    // Pad or truncate to 768 dims to match pgvector column
-    if (embedding.length >= 768) return embedding.slice(0, 768);
-    return [...embedding, ...new Array(768 - embedding.length).fill(0)];
+    return data.data[0].embedding;
 }
 
 async function hfEmbeddingBatch(texts) {
-    // Use Groq embeddings in batch
-    const response = await fetch('https://api.groq.com/openai/v1/embeddings', {
+    const response = await fetch('https://api.voyageai.com/v1/embeddings', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${GROQ_API_KEY}`,
+            'Authorization': `Bearer ${process.env.VOYAGE_API_KEY}`,
         },
         body: JSON.stringify({ 
-            model: 'embedding-001',
+            model: 'voyage-3-lite',
             input: texts,
+            output_dimension: 768,
         }),
     });
 
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Groq batch embed failed (${response.status}): ${errText}`);
+        throw new Error(`Voyage batch embed failed (${response.status}): ${errText}`);
     }
 
     const data = await response.json();
-    return data.data.map(item => {
-        const embedding = item.embedding;
-        if (embedding.length >= 768) return embedding.slice(0, 768);
-        return [...embedding, ...new Array(768 - embedding.length).fill(0)];
-    });
+    return data.data.map(item => item.embedding);
 }
 
 // ─── Tool format helpers ────────────────────────────────────────────────────
