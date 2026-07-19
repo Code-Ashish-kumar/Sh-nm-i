@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { getUserDocuments, deleteDocumentById } from "../services/Operations/documentAPI";
+import FlashcardViewer from "../components/FlashcardViewer";
 import { colorThemes } from "../utils/colorTheme";
 
 // Icons
@@ -81,6 +82,7 @@ export default function MyDocuments() {
     const [error, setError] = useState(null);
     const [expandedSubjects, setExpandedSubjects] = useState({});
     const [deletingId, setDeletingId] = useState(null);
+    const [flashcardSubjectId, setFlashcardSubjectId] = useState(null);
 
     const themeId = useSelector((state) => state.theme.theme_id);
     const theme = colorThemes.find((t) => t.color_grp === themeId) || colorThemes[0];
@@ -89,15 +91,27 @@ export default function MyDocuments() {
         fetchDocuments();
     }, []);
 
-    const fetchDocuments = async () => {
+    useEffect(() => {
+        let interval;
+        const hasProcessing = subjects.some(s => s.documents.some(d => d.status === 'processing'));
+        if (hasProcessing) {
+            interval = setInterval(() => {
+                fetchDocuments(true);
+            }, 5000);
+        }
+        return () => clearInterval(interval);
+    }, [subjects]);
+
+    const fetchDocuments = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const data = await getUserDocuments();
             setSubjects(data || []);
-            // Expand all by default
-            const expanded = {};
-            (data || []).forEach((s) => { expanded[s.subject_id] = true; });
-            setExpandedSubjects(expanded);
+            if (!silent) {
+                const expanded = {};
+                (data || []).forEach((s) => { expanded[s.subject_id] = true; });
+                setExpandedSubjects(expanded);
+            }
         } catch (err) {
             console.error(err);
             setError("Couldn't load your documents. Make sure the server is running.");
@@ -217,10 +231,20 @@ export default function MyDocuments() {
                                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ color: theme.text_muted, backgroundColor: `${theme.accent}1A` }}>
                                         {subject.documents.length} {subject.documents.length === 1 ? "file" : "files"}
                                     </span>
+                                    {subject.documents.some(d => d.status === 'completed') && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setFlashcardSubjectId(subject.subject_id); }}
+                                            className="ml-2 px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border hover:opacity-80"
+                                            style={{ borderColor: theme.accent, color: theme.accent, backgroundColor: `${theme.accent}1A` }}
+                                            title="Generate flashcards from these notes"
+                                        >
+                                            ✨ Flashcards
+                                        </button>
+                                    )}
                                     <svg
                                         width="16" height="16" viewBox="0 0 24 24" fill="none"
                                         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                        className={`transition-transform duration-200 ${expandedSubjects[subject.subject_id] ? "rotate-180" : ""}`}
+                                        className={`transition-transform duration-200 ml-2 ${expandedSubjects[subject.subject_id] ? "rotate-180" : ""}`}
                                         style={{ color: theme.text_muted }}
                                     >
                                         <polyline points="6 9 12 15 18 9" />
@@ -279,6 +303,15 @@ export default function MyDocuments() {
                     </div>
                 )}
             </div>
+
+            {/* Flashcards Modal */}
+            {flashcardSubjectId && (
+                <FlashcardViewer 
+                    subjectId={flashcardSubjectId} 
+                    onClose={() => setFlashcardSubjectId(null)}
+                    theme={theme}
+                />
+            )}
         </div>
     );
 }

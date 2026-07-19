@@ -41,5 +41,6 @@ export const documentEndpoints = {
     UPLOAD_DOCUMENT_API: BASE_URL + "/subjects/:subject_id/documents",
     CHAT_WITH_AGENT_API: BASE_URL + "/subjects/:subject_id/chat",
     GET_USER_DOCUMENTS_API: BASE_URL + "/subjects/documents",
-    DELETE_DOCUMENT_API: BASE_URL + "/subjects/documents/:doc_id"
+    DELETE_DOCUMENT_API: BASE_URL + "/subjects/documents/:doc_id",
+    GENERATE_FLASHCARDS_API: BASE_URL + "/subjects/:subject_id/flashcards"
 }

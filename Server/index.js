@@ -10,7 +10,6 @@ import { todoRouter } from './src/routes/Todo.js';
 import { sessionRouter } from './src/routes/Session.js';
 import { analyticsRouter } from './src/routes/analytics.js';
 import { initDB } from './src/db/initDB.js';
-import { initWorker } from './src/workers/documentWorker.js';
 
 dotenv.config()
 
@@ -20,7 +19,19 @@ const app = express()
 // Connect to the database and verify the connection
 await connectDB()
 await initDB()
-initWorker();
+
+// Clean up any documents that were stuck in processing due to a server restart
+import { query } from './src/config/db.js';
+try {
+  const cleanupResult = await query(
+    `UPDATE documents SET status = 'failed' WHERE status = 'processing' AND created_at < NOW() - INTERVAL '10 minutes'`
+  );
+  if (cleanupResult.rowCount > 0) {
+    console.log(`Cleaned up ${cleanupResult.rowCount} stuck document(s).`);
+  }
+} catch (error) {
+  console.error('Failed to clean up stuck documents:', error);
+}
 
 //middlewares
 app.use(

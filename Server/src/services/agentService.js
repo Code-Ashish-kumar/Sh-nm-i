@@ -50,6 +50,9 @@ HOW TO ANSWER:
 3. After your explanation, add a brief "📌 Reference:" section with book name and page numbers.
 4. If notes have nothing relevant, use searchWeb and clearly indicate the answer came from the internet.
 
+CRITICAL RETRIEVAL INSTRUCTION:
+When calling searchLocalNotes, always rewrite the query to be self-contained using the conversation so far — never pass a pronoun-only or vague follow-up as-is. For example, if the user asks "What is it?" after discussing backpropagation, your search query should be "backpropagation".
+
 RESPONSE FORMAT:
 - Give a clear, educational explanation FIRST (2-4 paragraphs for complex topics, 1-2 for simple ones)
 - Use examples where helpful
@@ -58,7 +61,6 @@ RESPONSE FORMAT:
 
 IMPORTANT:
 - Your primary job is to EXPLAIN and TEACH, not just cite.
-- If the user asks a follow-up like "but what is it?" or "explain more", answer directly using context you already have — you don't always need to search again.
 - Be conversational and helpful.`;
 
 const executeWebSearch = async (searchQuery) => {

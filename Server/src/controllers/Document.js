@@ -1,7 +1,6 @@
 import { query } from '../config/db.js';
 import { runStudyBuddyAgent } from '../services/agentService.js';
-import { documentQueue } from '../workers/documentWorker.js';
-
+import { processDocument } from '../services/documentService.js';
 export const uploadDocument = async (req, res) => {
     try {
         const { id: subjectId } = req.params;
@@ -12,41 +11,43 @@ export const uploadDocument = async (req, res) => {
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        // multer-storage-cloudinary provides the URL in file.path (secure_url)
-        const fileUrl = file.path;
+        // multer.memoryStorage gives us file.buffer instead of file.path
+        if (!file.buffer) {
+            return res.status(400).json({ error: 'File buffer is missing' });
+        }
+
         console.log('Uploaded file info:', { 
             originalname: file.originalname, 
-            path: file.path, 
             mimetype: file.mimetype,
             size: file.size
         });
 
-        // 1. Insert into database
+        // 1. Insert into database with status 'processing'
         const insertDocSql = `
             INSERT INTO documents (user_id, subject_id, title, file_url, file_type, status)
             VALUES ($1, $2, $3, $4, $5, 'processing')
             RETURNING id
         `;
+        // Temporarily store empty file_url, we will update it after uploading to Cloudinary in background
         const result = await query(insertDocSql, [
             userId, 
             subjectId, 
             file.originalname, 
-            fileUrl,
+            '', 
             file.mimetype
         ]);
         
         const documentId = result.rows[0].id;
 
-        // 2. Enqueue document for background processing (BullMQ)
-        await documentQueue.add('process-pdf', {
-            documentId,
-            fileUrl: fileUrl,
-            fileType: file.mimetype
-        });
-
+        // 2. Respond immediately
         res.status(202).json({ 
             message: 'Document uploaded and processing started in background', 
             documentId 
+        });
+
+        // 3. Fire-and-forget processing
+        processDocument(documentId, file.buffer, file.mimetype, file.originalname).catch(err => {
+            console.error(`Background processing failed for doc ${documentId}:`, err);
         });
 
     } catch (error) {

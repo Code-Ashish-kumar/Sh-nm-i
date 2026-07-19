@@ -1,6 +1,10 @@
 import { query } from '../config/db.js';
 import { PDFParse } from 'pdf-parse';
 import { generateEmbedding, generateEmbeddingBatch } from './llmProvider.js';
+import { v2 as cloudinary } from 'cloudinary';
+import PQueue from 'p-queue';
+
+const processQueue = new PQueue({ concurrency: 2 });
 
 // ─── Chunking with page awareness ──────────────────────────────────────────
 
@@ -11,29 +15,54 @@ import { generateEmbedding, generateEmbeddingBatch } from './llmProvider.js';
  * @param {number} overlapWords - Overlap between chunks
  * @returns {Array<{content: string, pageStart: number, pageEnd: number}>}
  */
-export const chunkPages = (pages, maxWords = 500, overlapWords = 100) => {
+export const chunkPages = (pages, maxWords = 300, overlapSentences = 2) => {
     const chunks = [];
+    const allSentences = [];
     
-    // Flatten pages into word-level tokens with page references
-    const tokens = []; // { word, page }
+    // Flatten pages into sentences with page references
     for (const { page, text } of pages) {
-        const words = text.split(/\s+/).filter(w => w.trim());
-        for (const word of words) {
-            tokens.push({ word, page });
+        // Split text by sentence boundaries (., !, ?)
+        const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g) || [];
+        for (let s of sentences) {
+            const trimmed = s.trim();
+            if (trimmed) {
+                allSentences.push({ text: trimmed, page });
+            }
         }
     }
 
     let i = 0;
-    while (i < tokens.length) {
-        const slice = tokens.slice(i, i + maxWords);
-        if (slice.length === 0) break;
-
-        const content = slice.map(t => t.word).join(' ');
-        const pageStart = slice[0].page;
-        const pageEnd = slice[slice.length - 1].page;
-
-        chunks.push({ content, pageStart, pageEnd });
-        i += (maxWords - overlapWords);
+    while (i < allSentences.length) {
+        let chunkContent = [];
+        let wordCount = 0;
+        let pageStart = allSentences[i].page;
+        let pageEnd = pageStart;
+        
+        let j = i;
+        while (j < allSentences.length) {
+            const sentence = allSentences[j];
+            const sentenceWordCount = sentence.text.split(/\s+/).length;
+            
+            if (wordCount + sentenceWordCount > maxWords && wordCount > 0) {
+                break; // Chunk is full
+            }
+            
+            chunkContent.push(sentence.text);
+            wordCount += sentenceWordCount;
+            pageEnd = sentence.page;
+            j++;
+        }
+        
+        chunks.push({
+            content: chunkContent.join(' '),
+            pageStart,
+            pageEnd
+        });
+        
+        if (j >= allSentences.length) break;
+        
+        // Advance i, overlapping by overlapSentences
+        i = Math.max(i + 1, j - overlapSentences);
     }
 
     return chunks;
@@ -47,9 +76,26 @@ export const generateEmbeddings = async (text) => {
 
 // ─── Document Processing ────────────────────────────────────────────────────
 
-export const processDocument = async (documentId, fileData, fileType) => {
-    try {
-        let pages = []; // Array of { page: number, text: string }
+export const processDocument = async (documentId, fileData, fileType, fileName) => {
+    return processQueue.add(async () => {
+        try {
+            console.log(`[Queue] Starting processing for doc ${documentId}`);
+            
+            // 1. Upload to Cloudinary (for storage/display)
+            let resourceType = (fileType === 'application/pdf' || fileType === 'text/plain') ? 'raw' : 'auto';
+            const uploadResult = await new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream(
+                    { folder: 'study-buddy-assets', resource_type: resourceType },
+                    (err, res) => { if (err) reject(err); else resolve(res); }
+                );
+                stream.end(fileData);
+            });
+            
+            const fileUrl = uploadResult.secure_url;
+            await query(`UPDATE documents SET file_url = $1 WHERE id = $2`, [fileUrl, documentId]);
+            console.log(`[Queue] Uploaded ${fileName} to Cloudinary.`);
+
+            let pages = []; // Array of { page: number, text: string }
 
         if (fileType === 'application/pdf') {
             const parser = new PDFParse({ data: fileData });
@@ -110,6 +156,7 @@ export const processDocument = async (documentId, fileData, fileType) => {
         console.error("Full error:", error);
         await query(`UPDATE documents SET status = 'failed' WHERE id = $1`, [documentId]);
     }
+    }); // end queue.add
 };
 
 // ─── Vector Search (returns content + source references) ────────────────────
