@@ -3,28 +3,12 @@ import Navbar from "../components/Navbar";
 import DemoTimer from "../components/timer/DemoTimer";
 import { useSelector } from "react-redux";
 
+import { FiClock, FiBarChart2, FiShield } from "react-icons/fi";
+
 // Feature icons as inline SVGs
-const ClockIcon = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-    </svg>
-);
-
-const ChartIcon = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="20" x2="18" y2="10" />
-        <line x1="12" y1="20" x2="12" y2="4" />
-        <line x1="6" y1="20" x2="6" y2="14" />
-    </svg>
-);
-
-const ShieldIcon = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        <polyline points="9 12 11 14 15 10" />
-    </svg>
-);
+const ClockIcon = () => <FiClock size={28} className="stroke-[1.5]" />;
+const ChartIcon = () => <FiBarChart2 size={28} className="stroke-[1.5]" />;
+const ShieldIcon = () => <FiShield size={28} className="stroke-[1.5]" />;
 
 const FEATURES = [
     {

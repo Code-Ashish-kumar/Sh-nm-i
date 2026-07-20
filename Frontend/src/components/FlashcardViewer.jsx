@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateFlashcards } from "../services/Operations/documentAPI";
+import { FiX } from "react-icons/fi";
 
-export default function FlashcardViewer({ subjectId, onClose, theme }) {
+export default function FlashcardViewer({ subjectId, documentId = null, documentTitle = null, onClose, theme }) {
     const [flashcards, setFlashcards] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -11,19 +12,20 @@ export default function FlashcardViewer({ subjectId, onClose, theme }) {
 
     useEffect(() => {
         loadFlashcards();
-    }, [subjectId]);
+    }, [subjectId, documentId]);
 
     const loadFlashcards = async () => {
         try {
             setLoading(true);
             setError(null);
-            const cards = await generateFlashcards(subjectId);
+            const cards = await generateFlashcards(subjectId, documentId);
             setFlashcards(cards || []);
             setCurrentIndex(0);
             setIsFlipped(false);
         } catch (err) {
             console.error(err);
-            setError("Failed to generate flashcards. Please try again.");
+            const msg = err?.data?.error || err?.message || "Failed to generate flashcards. Please try again.";
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -62,18 +64,22 @@ export default function FlashcardViewer({ subjectId, onClose, theme }) {
                 >
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-bold" style={{ color: theme.text_primary }}>
-                            Smart Flashcards
-                        </h2>
+                        <div>
+                            <h2 className="text-xl font-bold" style={{ color: theme.text_primary }}>
+                                ✨ Flashcards
+                            </h2>
+                            {documentTitle && (
+                                <p className="text-xs mt-0.5 truncate max-w-sm" style={{ color: theme.text_muted }}>
+                                    {documentTitle}
+                                </p>
+                            )}
+                        </div>
                         <button
                             onClick={onClose}
-                            className="p-2 rounded-lg hover:bg-black/5 transition-colors"
+                            className="p-2 rounded-lg hover:bg-black/5 transition-colors flex items-center justify-center"
                             style={{ color: theme.text_muted }}
                         >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
+                            <FiX size={24} />
                         </button>
                     </div>
 

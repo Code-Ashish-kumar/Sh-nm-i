@@ -1,21 +1,8 @@
-const PlayIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
-);
+import { FaPlay, FaPause, FaStop } from "react-icons/fa";
 
-const PauseIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-        <rect x="6" y="4" width="4" height="16" rx="1" />
-        <rect x="14" y="4" width="4" height="16" rx="1" />
-    </svg>
-);
-
-const StopIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-    </svg>
-);
+const PlayIcon = () => <FaPlay size={18} />;
+const PauseIcon = () => <FaPause size={18} />;
+const StopIcon = () => <FaStop size={18} />;
 
 export default function TimerControls({ mode, onPlayPause, onStop }) {
     const isRunning = mode === "focus" || mode === "break";

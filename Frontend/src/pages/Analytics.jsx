@@ -6,6 +6,7 @@ import { analyticsEndpoints } from '../services/api';
 import { fetchAnalyticsDashboard } from '../services/Operations/analyticsAPI';
 import { logout } from '../services/Operations/authAPI';
 import { clearAuth } from '../slices/authSlice';
+import { FiX } from 'react-icons/fi';
 
 // Make sure to import your themes from wherever they are stored
 import { colorThemes } from '../utils/colorTheme';
@@ -225,12 +226,10 @@ const Analytics = () => {
 
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="theme-modal-btn border rounded-full p-2 transition-all"
+                  className="theme-modal-btn border rounded-full p-2 transition-all flex items-center justify-center"
                   style={{ color: theme.text_muted, backgroundColor: theme.page_bg, borderColor: theme.border }}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
+                  <FiX className="w-5 h-5" />
                 </button>
               </div>
 

@@ -99,8 +99,9 @@ export async function deleteDocumentById(docId) {
 //  GET /subjects/:subject_id/flashcards
 //  Returns: { flashcards: [...] }
 // ─────────────────────────────────────────────
-export async function generateFlashcards(subjectId) {
-    const url = documentEndpoints.GENERATE_FLASHCARDS_API.replace(":subject_id", subjectId);
+export async function generateFlashcards(subjectId, documentId = null) {
+    let url = documentEndpoints.GENERATE_FLASHCARDS_API.replace(":subject_id", subjectId);
+    if (documentId) url += `?documentId=${documentId}`;
     try {
         const data = await apiConnector("GET", url);
         return data.flashcards;

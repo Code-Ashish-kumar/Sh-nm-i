@@ -9,6 +9,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import MyDocuments from "./pages/MyDocuments";
+import Subjects from "./pages/Subjects";
+import SubjectDetail from "./pages/SubjectDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedLayout from "./components/ProtectedLayout";
 
@@ -72,6 +74,8 @@ function App() {
                     }
                 >
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/subjects" element={<Subjects />} />
+                    <Route path="/subjects/:subjectId" element={<SubjectDetail />} />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/my-documents" element={<MyDocuments />} />
                 </Route>

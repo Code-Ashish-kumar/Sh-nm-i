@@ -3,6 +3,8 @@ import { useDispatch } from "react-redux";
 import { getUserTodos, createTodo, completeTodo } from "../../services/Operations/todoAPI";
 import { fetchCurrentStreak } from "../../services/Operations/analyticsAPI";
 
+import { FiCheck, FiMoreVertical } from "react-icons/fi";
+
 // Circle checkbox icon
 const CheckCircle = ({ checked, onClick }) => (
     <button
@@ -13,22 +15,14 @@ const CheckCircle = ({ checked, onClick }) => (
                 : "border-[#2D1B4E]/30 hover:border-[#2D1B4E]/60 hover:bg-[#2D1B4E]/5"
         }`}
     >
-        {checked && (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-            </svg>
-        )}
+        {checked && <FiCheck size={10} color="white" />}
     </button>
 );
 
 // Vertical ellipsis
 const MoreIcon = () => (
-    <button className="text-[#2D1B4E]/30 hover:text-[#2D1B4E]/60 transition-colors cursor-pointer p-1">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="12" cy="5" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="12" cy="19" r="2" />
-        </svg>
+    <button className="text-[#2D1B4E]/30 hover:text-[#2D1B4E]/60 transition-colors cursor-pointer p-1 flex items-center justify-center">
+        <FiMoreVertical size={14} />
     </button>
 );
 
