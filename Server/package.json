@@ -1,9 +1,8 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "Server for Pomodoro app",
+  "description": "Server for SH-NM-I",
   "license": "ISC",
-  "author": "Yatin",
   "type": "module",
   "main": "index.js",
   "scripts": {
